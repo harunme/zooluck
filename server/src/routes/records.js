@@ -9,7 +9,7 @@ router.get('/', authenticateToken, async (_, res) => {
   try {
     const connection = await pool.getConnection();
     const [records] = await connection.query(`
-      SELECT r.id, r.prize_id, r.phone, r.vipcard, r.quantity, r.record_type, r.status, r.created_at, r.updated_at, p.name as prize_name
+      SELECT r.id, r.prize_id, r.phone, r.vipcard, r.quantity, r.record_type, r.status, r.created_at, r.updated_at, p.name as prize_name, p.image as prize_image
       FROM records r
       LEFT JOIN prizes p ON r.prize_id = p.id
       ORDER BY r.created_at DESC

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Button,
@@ -12,9 +12,9 @@ import {
   Popconfirm,
   Spin,
   Upload,
-} from 'antd';
-import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { get, post, put, del } from '../utils/api.js';
+} from "antd";
+import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import { get, post, put, del } from "../utils/api.js";
 
 function PrizeSettings() {
   const [prizes, setPrizes] = useState([]);
@@ -32,15 +32,15 @@ function PrizeSettings() {
   const fetchPrizes = async () => {
     setLoading(true);
     try {
-      const response = await get('/prizes');
+      const response = await get("/prizes");
       if (!response.ok) {
-        throw new Error('Failed to fetch prizes');
+        throw new Error("Failed to fetch prizes");
       }
       const data = await response.json();
       setPrizes(data);
     } catch (error) {
-      console.error('Error fetching prizes:', error);
-      message.error('加载奖品列表失败');
+      console.error("Error fetching prizes:", error);
+      message.error("加载奖品列表失败");
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ function PrizeSettings() {
     setEditingId(null);
     setPreviewImage(null);
     form.resetFields();
-    form.setFieldsValue({ supplier: '大连森林动物园' });
+    form.setFieldsValue({ supplier: "大连森林动物园" });
     setIsModalVisible(true);
   };
 
@@ -71,34 +71,30 @@ function PrizeSettings() {
         const response = await put(`/prizes/${editingId}`, values);
 
         if (!response.ok) {
-          throw new Error('Failed to update prize');
+          throw new Error("Failed to update prize");
         }
 
         const updatedPrize = await response.json();
-        setPrizes(
-          prizes.map((p) =>
-            p.id === editingId ? updatedPrize : p
-          )
-        );
-        message.success('编辑奖品成功');
+        setPrizes(prizes.map((p) => (p.id === editingId ? updatedPrize : p)));
+        message.success("编辑奖品成功");
       } else {
         // 添加新奖品
-        const response = await post('/prizes', values);
+        const response = await post("/prizes", values);
 
         if (!response.ok) {
-          throw new Error('Failed to create prize');
+          throw new Error("Failed to create prize");
         }
 
         const newPrize = await response.json();
         setPrizes([...prizes, newPrize]);
-        message.success('添加奖品成功');
+        message.success("添加奖品成功");
       }
 
       setIsModalVisible(false);
       setPreviewImage(null);
     } catch (error) {
-      console.error('Error saving prize:', error);
-      message.error(editingId ? '编辑奖品失败' : '添加奖品失败');
+      console.error("Error saving prize:", error);
+      message.error(editingId ? "编辑奖品失败" : "添加奖品失败");
     } finally {
       setLoading(false);
     }
@@ -110,14 +106,14 @@ function PrizeSettings() {
       const response = await del(`/prizes/${id}`);
 
       if (!response.ok) {
-        throw new Error('Failed to delete prize');
+        throw new Error("Failed to delete prize");
       }
 
       setPrizes(prizes.filter((p) => p.id !== id));
-      message.success('删除成功');
+      message.success("删除成功");
     } catch (error) {
-      console.error('Error deleting prize:', error);
-      message.error('删除奖品失败');
+      console.error("Error deleting prize:", error);
+      message.error("删除奖品失败");
     } finally {
       setLoading(false);
     }
@@ -126,14 +122,14 @@ function PrizeSettings() {
   // 处理图片上传
   const handleImageUpload = ({ file }) => {
     if (file.size > 5 * 1024 * 1024) {
-      message.error('图片大小不能超过 5MB');
+      message.error("图片大小不能超过 5MB");
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64String = e.target.result;
-      form.setFieldValue('image', base64String);
+      form.setFieldValue("image", base64String);
       setPreviewImage(base64String);
     };
     reader.readAsDataURL(file);
@@ -142,84 +138,102 @@ function PrizeSettings() {
   // 检查是否是 base64 图片
   const isBase64Image = (str) => {
     if (!str) return false;
-    return str.startsWith('data:image');
+    return str.startsWith("data:image");
   };
 
-  const totalQuantity = prizes.reduce((sum, prize) => sum + (prize.quantity || 0), 0);
+  const totalQuantity = prizes.reduce(
+    (sum, prize) => sum + (prize.quantity || 0),
+    0
+  );
 
   const columns = [
     {
-      title: '奖品名称',
-      dataIndex: 'name',
-      key: 'name',
-      width: 200,
-    },
-    {
-      title: '奖品图片',
-      dataIndex: 'image',
-      key: 'image',
+      title: "奖品图片",
+      dataIndex: "image",
+      key: "image",
       width: 100,
-      align: 'center',
+      align: "center",
       render: (image) => {
         if (!image) {
-          return <span style={{ color: '#ccc' }}>无</span>;
+          return (
+            <span
+              style={{
+                color: "#ccc",
+                lineHeight: "42px",
+                display: "block",
+                height: "42px",
+              }}
+            ></span>
+          );
         }
         if (isBase64Image(image)) {
           return (
             <img
               src={image}
               alt="prize"
-              style={{ maxWidth: '60px', maxHeight: '60px', borderRadius: '4px' }}
+              style={{
+                maxWidth: "42px",
+                maxHeight: "42px",
+                borderRadius: "4px",
+                display: "block",
+                margin: "0 auto",
+              }}
             />
           );
         }
         // 显示 emoji
         return (
-          <div style={{ fontSize: 32 }}>
+          <div style={{ fontSize: 32, lineHeight: "60px", height: "60px" }}>
             {image}
           </div>
         );
       },
     },
     {
-      title: '奖品数量',
-      dataIndex: 'quantity',
-      key: 'quantity',
+      title: "奖品名称",
+      dataIndex: "name",
+      key: "name",
+      width: 200,
+    },
+
+    {
+      title: "奖品数量",
+      dataIndex: "quantity",
+      key: "quantity",
       width: 120,
-      align: 'center',
+      align: "center",
     },
     {
-      title: '中奖概率',
-      dataIndex: 'probability',
-      key: 'probability',
+      title: "中奖概率",
+      dataIndex: "probability",
+      key: "probability",
       width: 120,
-      align: 'center',
+      align: "center",
       render: (_, record) => {
         if (totalQuantity === 0) {
           return <span>0%</span>;
         }
-        const probability = ((record.quantity || 0) / totalQuantity * 100).toFixed(2);
+        const probability = (
+          ((record.quantity || 0) / totalQuantity) *
+          100
+        ).toFixed(2);
         return <span>{probability}%</span>;
       },
     },
     {
-      title: '奖品提供商',
-      dataIndex: 'supplier',
-      key: 'supplier',
+      title: "奖品提供商",
+      dataIndex: "supplier",
+      key: "supplier",
       width: 180,
     },
     {
-      title: '操作',
-      key: 'action',
-      align: 'center',
+      title: "操作",
+      key: "action",
+      align: "center",
       width: 180,
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            onClick={() => handleEdit(record)}
-          >
+          <Button type="link" size="small" onClick={() => handleEdit(record)}>
             编辑奖品
           </Button>
           <Popconfirm
@@ -243,7 +257,12 @@ function PrizeSettings() {
       <Card
         title="奖品设置"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} loading={loading}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+            loading={loading}
+          >
             添加奖品
           </Button>
         }
@@ -253,14 +272,17 @@ function PrizeSettings() {
             columns={columns}
             dataSource={prizes}
             rowKey="id"
-            pagination={{ pageSize: 20 }}
+            pagination={{
+              pageSize: 10,
+              shape: "default",
+            }}
             scroll={{ x: 1200 }}
-            size="small"
+            size="large"
           />
         </Spin>
 
         <Modal
-          title={editingId ? '编辑奖品' : '添加奖品'}
+          title={editingId ? "编辑奖品" : "添加奖品"}
           open={isModalVisible}
           onOk={handleSave}
           onCancel={() => setIsModalVisible(false)}
@@ -273,54 +295,57 @@ function PrizeSettings() {
             <Form.Item
               name="name"
               label="奖品名称"
-              rules={[{ required: true, message: '请输入奖品名称' }]}
+              rules={[{ required: true, message: "请输入奖品名称" }]}
             >
               <Input placeholder="请输入奖品名称" />
             </Form.Item>
 
-            <Form.Item
-              name="image"
-              label="奖品图片"
-            >
+            <Form.Item name="image" label="奖品图片">
               <div>
                 {previewImage && (
-                  <div style={{ marginBottom: '12px' }}>
+                  <div style={{ marginBottom: "12px" }}>
                     {isBase64Image(previewImage) ? (
                       <img
                         src={previewImage}
                         alt="preview"
                         onClick={() => {
-                          document.getElementById('image-upload-input').click();
+                          document.getElementById("image-upload-input").click();
                         }}
                         style={{
-                          maxWidth: '120px',
-                          maxHeight: '120px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          border: '1px solid #d9d9d9',
-                          padding: '4px',
+                          maxWidth: "120px",
+                          maxHeight: "120px",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          border: "1px solid #d9d9d9",
+                          padding: "4px",
                         }}
                         title="点击更换图片"
                       />
                     ) : (
                       <div
                         onClick={() => {
-                          document.getElementById('image-upload-input').click();
+                          document.getElementById("image-upload-input").click();
                         }}
                         style={{
                           fontSize: 60,
-                          cursor: 'pointer',
-                          display: 'inline-block',
-                          padding: '8px',
-                          border: '1px solid #d9d9d9',
-                          borderRadius: '4px',
+                          cursor: "pointer",
+                          display: "inline-block",
+                          padding: "8px",
+                          border: "1px solid #d9d9d9",
+                          borderRadius: "4px",
                         }}
                         title="点击更换图片"
                       >
                         {previewImage}
                       </div>
                     )}
-                    <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#666",
+                        marginTop: "4px",
+                      }}
+                    >
                       点击图片可更换
                     </p>
                   </div>
@@ -347,7 +372,7 @@ function PrizeSettings() {
                       handleImageUpload({ file });
                     }
                   }}
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                 />
               </div>
             </Form.Item>
@@ -355,15 +380,19 @@ function PrizeSettings() {
             <Form.Item
               name="quantity"
               label="奖品数量"
-              rules={[{ required: true, message: '请输入奖品数量' }]}
+              rules={[{ required: true, message: "请输入奖品数量" }]}
             >
-              <InputNumber min={0} style={{ width: '100%' }} placeholder="请输入奖品数量" />
+              <InputNumber
+                min={0}
+                style={{ width: "100%" }}
+                placeholder="请输入奖品数量"
+              />
             </Form.Item>
 
             <Form.Item
               name="supplier"
               label="奖品提供商"
-              rules={[{ required: true, message: '请输入奖品提供商' }]}
+              rules={[{ required: true, message: "请输入奖品提供商" }]}
             >
               <Input placeholder="请输入奖品提供商" />
             </Form.Item>

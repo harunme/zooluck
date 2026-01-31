@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db from '../db.js';
+import { getDB } from '../db.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'zooluck-secret-key-2026';
@@ -32,17 +32,17 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
     }
 
+    const db = getDB();
+
     // 查询管理员
-    const [admins] = await db.query(
+    const admin = await db.get(
       'SELECT * FROM admins WHERE username = ?',
       [username]
     );
 
-    if (admins.length === 0) {
+    if (!admin) {
       return res.status(401).json({ success: false, message: '用户名或密码错误' });
     }
-
-    const admin = admins[0];
 
     // 验证密码
     const isValidPassword = await bcrypt.compare(password, admin.password);
@@ -97,13 +97,15 @@ router.post('/create', async (req, res) => {
       return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
     }
 
+    const db = getDB();
+
     // 检查是否已存在
-    const [existing] = await db.query(
+    const existing = await db.get(
       'SELECT * FROM admins WHERE username = ?',
       [username]
     );
 
-    if (existing.length > 0) {
+    if (existing) {
       return res.status(400).json({ success: false, message: '用户名已存在' });
     }
 
@@ -111,7 +113,7 @@ router.post('/create', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 插入管理员
-    await db.query(
+    await db.run(
       'INSERT INTO admins (username, password) VALUES (?, ?)',
       [username, hashedPassword]
     );
@@ -136,17 +138,17 @@ router.post('/change-password', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: '新密码长度不能少于4位' });
     }
 
+    const db = getDB();
+
     // 查询用户
-    const [admins] = await db.query(
+    const admin = await db.get(
       'SELECT * FROM admins WHERE username = ?',
       [req.user.username]
     );
 
-    if (admins.length === 0) {
+    if (!admin) {
       return res.status(404).json({ message: '用户不存在' });
     }
-
-    const admin = admins[0];
 
     // 验证当前密码
     const isValidPassword = await bcrypt.compare(currentPassword, admin.password);
@@ -159,7 +161,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
     // 更新密码
-    await db.query(
+    await db.run(
       'UPDATE admins SET password = ? WHERE id = ?',
       [hashedNewPassword, admin.id]
     );

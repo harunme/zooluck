@@ -1,5 +1,5 @@
 import express from 'express';
-import pool from '../db.js';
+import { getDB } from '../db.js';
 import { authenticateToken } from './auth.js';
 
 const router = express.Router();
@@ -7,15 +7,14 @@ const router = express.Router();
 // Get redeem password (需要认证)
 router.get('/redeem-password', authenticateToken, async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query(
+    const db = getDB();
+    const row = await db.get(
       'SELECT setting_value as value FROM settings WHERE setting_key = ?',
       ['redeem_password']
     );
-    connection.release();
 
-    if (rows.length > 0) {
-      res.json({ value: rows[0].value });
+    if (row) {
+      res.json({ value: row.value });
     } else {
       res.json({ value: null });
     }
@@ -38,25 +37,23 @@ router.put('/redeem-password', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: '密码长度不能少于4位' });
     }
 
-    const connection = await pool.getConnection();
-    const [existing] = await connection.query(
+    const db = getDB();
+    const existing = await db.get(
       'SELECT * FROM settings WHERE setting_key = ?',
       ['redeem_password']
     );
 
-    if (existing.length > 0) {
-      await connection.query(
+    if (existing) {
+      await db.run(
         'UPDATE settings SET setting_value = ? WHERE setting_key = ?',
         [redeemPassword, 'redeem_password']
       );
     } else {
-      await connection.query(
+      await db.run(
         'INSERT INTO settings (setting_key, setting_value, description) VALUES (?, ?, ?)',
         ['redeem_password', redeemPassword, '领取密码']
       );
     }
-
-    connection.release();
 
     res.json({
       message: '设置更新成功',

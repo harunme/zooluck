@@ -8,6 +8,7 @@ import recordRoutes from './routes/records.js';
 import settingsRoutes from './routes/settings.js';
 import lotteryRoutes from './routes/lottery.js';
 import authRoutes from './routes/auth.js';
+import { initDB } from './db.js';
 
 dotenv.config();
 
@@ -51,7 +52,8 @@ app.get('*', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await initDB();
   console.log(`Server running on port ${PORT}`);
   console.log(`访问 http://localhost:${PORT} 查看管理后台`);
   console.log(`访问 http://localhost:${PORT}/games 查看H5游戏`);

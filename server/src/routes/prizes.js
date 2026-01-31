@@ -1,5 +1,5 @@
 import express from 'express';
-import pool from '../db.js';
+import { getDB } from '../db.js';
 import { authenticateToken } from './auth.js';
 
 const router = express.Router();
@@ -7,9 +7,8 @@ const router = express.Router();
 // Get all prizes (需要认证)
 router.get('/', authenticateToken, async (_, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [prizes] = await connection.query('SELECT * FROM prizes ORDER BY id');
-    connection.release();
+    const db = getDB();
+    const prizes = await db.all('SELECT * FROM prizes ORDER BY id');
     res.json(prizes);
   } catch (error) {
     console.error('Database error:', error);
@@ -26,15 +25,14 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields: name, quantity, supplier' });
     }
 
-    const connection = await pool.getConnection();
-    const [result] = await connection.query(
+    const db = getDB();
+    const result = await db.run(
       'INSERT INTO prizes (name, image, quantity, supplier) VALUES (?, ?, ?, ?)',
       [name, image || null, parseInt(quantity), supplier]
     );
-    connection.release();
 
     res.status(201).json({
-      id: result.insertId,
+      id: result.lastID,
       name,
       image: image || null,
       quantity: parseInt(quantity),
@@ -52,12 +50,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const prizeId = parseInt(req.params.id);
     const { name, image, quantity, supplier } = req.body;
 
-    const connection = await pool.getConnection();
+    const db = getDB();
 
     // Check if prize exists
-    const [prizes] = await connection.query('SELECT * FROM prizes WHERE id = ?', [prizeId]);
-    if (prizes.length === 0) {
-      connection.release();
+    const prize = await db.get('SELECT * FROM prizes WHERE id = ?', [prizeId]);
+    if (!prize) {
       return res.status(404).json({ message: 'Prize not found' });
     }
 
@@ -83,19 +80,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     if (updateFields.length === 0) {
-      connection.release();
       return res.status(400).json({ message: 'No fields to update' });
     }
 
     updateValues.push(prizeId);
     const query = `UPDATE prizes SET ${updateFields.join(', ')} WHERE id = ?`;
-    await connection.query(query, updateValues);
+    await db.run(query, updateValues);
 
     // Fetch updated prize
-    const [updatedPrizes] = await connection.query('SELECT * FROM prizes WHERE id = ?', [prizeId]);
-    connection.release();
+    const updatedPrize = await db.get('SELECT * FROM prizes WHERE id = ?', [prizeId]);
 
-    res.json(updatedPrizes[0]);
+    res.json(updatedPrize);
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -106,20 +101,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const prizeId = parseInt(req.params.id);
-    const connection = await pool.getConnection();
+    const db = getDB();
 
     // Check if prize exists
-    const [prizes] = await connection.query('SELECT * FROM prizes WHERE id = ?', [prizeId]);
-    if (prizes.length === 0) {
-      connection.release();
+    const prize = await db.get('SELECT * FROM prizes WHERE id = ?', [prizeId]);
+    if (!prize) {
       return res.status(404).json({ message: 'Prize not found' });
     }
 
-    const deletedPrize = prizes[0];
-    await connection.query('DELETE FROM prizes WHERE id = ?', [prizeId]);
-    connection.release();
+    await db.run('DELETE FROM prizes WHERE id = ?', [prizeId]);
 
-    res.json(deletedPrize);
+    res.json(prize);
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({ message: 'Internal server error' });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -6,7 +6,6 @@ import {
   Input,
   message,
   Modal,
-  Space,
   Popconfirm,
   Alert,
 } from 'antd';
@@ -20,27 +19,28 @@ function SystemSettings() {
   const [adminForm] = Form.useForm();
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [onLogout, setOnLogout] = useState(null);
 
-  useEffect(() => {
-    fetchRedeemPassword();
-  }, []);
-
-  const fetchRedeemPassword = async () => {
+  const fetchRedeemPassword = useCallback(async () => {
     try {
       const response = await get('/settings/redeem-password');
       if (response.ok) {
         const data = await response.json();
         if (data.value) {
           redeemForm.setFieldsValue({ redeemPassword: data.value });
-          setCurrentPassword(data.value);
         }
+      } else {
+        const error = await response.json();
+        message.error(error.message || '获取兑奖密码失败');
       }
     } catch (error) {
       console.error('Error fetching password:', error);
+      message.error('获取兑奖密码失败');
     }
-  };
+  }, [redeemForm]);
+
+  useEffect(() => {
+    fetchRedeemPassword();
+  }, [fetchRedeemPassword]);
 
   const handleSaveRedeemPassword = async () => {
     try {
@@ -57,7 +57,6 @@ function SystemSettings() {
       }
 
       message.success('兑奖密码已保存');
-      setCurrentPassword(values.redeemPassword);
     } catch (error) {
       console.error('Error saving password:', error);
       message.error(error.message || '保存失败');
@@ -110,7 +109,6 @@ function SystemSettings() {
       }
 
       redeemForm.setFieldsValue({ redeemPassword: DEFAULT_PASSWORD });
-      setCurrentPassword(DEFAULT_PASSWORD);
       message.success('兑奖密码已恢复为默认密码');
     } catch (error) {
       console.error('Error resetting password:', error);

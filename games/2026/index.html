@@ -17,23 +17,6 @@
         position: relative;
         background-color: #44a6ef;
       }
-
-      .notice {
-        /* border: 1px solid red; */
-        box-sizing: border-box;
-        position: fixed;
-        top: 0;
-        left: 0;
-        padding: 10vw;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.8);
-        color: #fff;
-        z-index: 9999;
-        overflow-y: auto;
-        display: none;
-      }
-
       /* 顶部开始按钮 */
       #button {
         position: absolute;
@@ -199,13 +182,13 @@
         font-size: 16px;
       }
 
-      .result .bag-cover {
+      /* .result .bag-cover {
         width: 85.73333333vw;
         height: 33.13343328vh;
         position: absolute;
         bottom: 0;
         left: 0;
-      }
+      } */
 
       @keyframes turn {
         0% {
@@ -340,7 +323,7 @@
       }
 
       .notice {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
         padding: 10vw;
@@ -348,7 +331,7 @@
         height: 100%;
         background-color: rgba(0, 0, 0, 0.8);
         color: #fff;
-        z-index: 9999;
+        z-index: 999999;
         overflow-y: auto;
         display: none;
       }
@@ -499,7 +482,7 @@
         bottom: 20vh;
         left: 0;
         width: 100%;
-        animation: slideInFromRight 8s forwards;
+        animation: slideInFromRight 2s forwards;
       }
       #game-gift {
         position: absolute;
@@ -507,7 +490,21 @@
         /* bottom: 200px; */
         left: 180px;
         width: 120px;
-        animation: dropFromTop 11s forwards;
+        animation: dropFromTop 3s forwards;
+      }
+      #game-fireworks {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9998;
+        display: none;
+      }
+      #game-fireworks img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
     </style>
   </head>
@@ -523,33 +520,27 @@
       <img id="game-horse" src="./images/horse.png" />
       <img id="game-gift" src="./images/gift.png" />
     </div>
-    <audio
-      id="bg-music"
-      muted="muted"
-      class="bg-music"
-      src="./music/bg.mp3"
-      loop=""
-    ></audio>
+    <audio id="bg-music" class="bg-music" src="./music/bg.mp3" loop></audio>
 
     <img class="paly-btn" src="./images/palying.png" />
 
-    <!-- <div id="fireworks">
-      <img src="./images/fireworks.gif" />
-    </div> -->
-    <div class="notice">
-      <h4>《2026年卡抽奖注意事项》</h4>
-      <p>
-        ①
-        每张年卡仅限一次抽奖机会，中奖率100%。抽奖活动截止日期2026年12月31日，逾期未抽奖者将失去抽奖资格，逾期未领奖者将视为放弃奖品。
-      </p>
-      <p>
-        ②
-        年卡号为卡背面10位号码（英文+数字），预留电话为开卡时所登记的电话号码。
-      </p>
-      <p>③ 兑奖地点为大连森林动物园年卡中心（散养区入口处）。</p>
-      <p>④ 兑奖时，需向工作人员出示年卡实体卡及微信中奖信息界面。</p>
+    <div
+      id="game-fireworks"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9998;
+      "
+    >
+      <img
+        src="./images/fireworks.gif"
+        style="width: 100%; height: 100%; object-fit: cover"
+      />
     </div>
-
     <div class="mask">
       <!-- 输入手机号 -->
       <div class="lottery-draw show">
@@ -570,12 +561,11 @@
       </div>
       <!-- 抽奖结果 -->
       <div class="result">
-        <img class="fireworks" src="./images/fireworks.png" />
         <div class="result-card">
           <!-- 奖品内容 -->
-          <p id="prizenameTxt">奖品是。。。</p>
+          <p id="prizenameTxt"></p>
         </div>
-        <img class="bag-cover" src="./images/bag-cover.png" />
+        <!-- <img class="bag-cover" src="./images/bag-cover.png" /> -->
       </div>
       <div class="exchange dj">
         <input
@@ -587,6 +577,19 @@
         />
         <div class="btn join">点击兑奖</div>
       </div>
+    </div>
+    <div class="notice">
+      <h4>《2026年卡抽奖注意事项》</h4>
+      <p>
+        ①
+        每张年卡仅限一次抽奖机会，中奖率100%。抽奖活动截止日期2026年12月31日，逾期未抽奖者将失去抽奖资格，逾期未领奖者将视为放弃奖品。
+      </p>
+      <p>
+        ②
+        年卡号为卡背面10位号码（英文+数字），预留电话为开卡时所登记的电话号码。
+      </p>
+      <p>③ 兑奖地点为大连森林动物园年卡中心（散养区入口处）。</p>
+      <p>④ 兑奖时，需向工作人员出示年卡实体卡及微信中奖信息界面。</p>
     </div>
     <script>
       // 微信自动播放音频
@@ -603,6 +606,11 @@
 
       $(function () {
         var loading = false;
+        // 监听game-gift动画结束事件
+        $("#game-gift").on("animationend", function () {
+          // 礼物动画结束后显示烟花
+          $("#game-fireworks").fadeIn(500);
+        });
         // 初始化视口大小
         // initViewport(window.innerWidth > window.innerHeight ? window.innerWidth : window.innerHeight);
 

@@ -7,6 +7,7 @@ import prizeRoutes from './routes/prizes.js';
 import recordRoutes from './routes/records.js';
 import settingsRoutes from './routes/settings.js';
 import lotteryRoutes from './routes/lottery.js';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use(express.static(path.join(projectRoot, 'client/build')));
 app.use('/games', express.static(path.join(projectRoot, 'games')));
 
 // API 路由
+app.use('/api/auth', authRoutes);
 app.use('/api/prizes', prizeRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/settings', settingsRoutes);

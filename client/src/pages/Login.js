@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import './Login.css';
+import backgroundImage from './background.jpg';
 
 function Login({ onLogin }) {
   const [form] = Form.useForm();
@@ -9,19 +11,43 @@ function Login({ onLogin }) {
 
   const handleSubmit = async (values) => {
     setLoading(true);
-    
-    setTimeout(() => {
-      message.success('登陆成功');
-      onLogin({ username: values.username, token: 'demo_token' });
+
+    try {
+      const response = await axios.post('/api/auth/login', {
+        username: values.username,
+        password: values.password
+      });
+
+      if (response.data.success) {
+        message.success('登录成功');
+        onLogin(response.data.data);
+      } else {
+        message.error(response.data.message || '登录失败');
+      }
+    } catch (error) {
+      message.error(error.response?.data?.message || '服务器错误，请稍后重试');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
+  };
+
+  const containerStyle = {
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  };
+
+  const cardStyle = {
+    borderRadius: 24,
+    boxShadow: '0 10px 40px rgba(44, 95, 45, 0.25)',
   };
 
   return (
-    <div className="login-container">
-      <Card className="login-card" bordered={false}>
+    <div className="login-container" style={containerStyle}>
+      <Card className="login-card" bordered={false} style={cardStyle}>
         <div className="login-header">
-          <h1>大连森林动物园</h1>
+          <h1>🦒 大连森林动物园</h1>
         </div>
         <Form
           form={form}
@@ -69,10 +95,6 @@ function Login({ onLogin }) {
             </Button>
           </Form.Item>
         </Form>
-
-        <div className="demo-tip">
-          <p>提示：任意用户名密码可登陆（演示模式）</p>
-        </div>
       </Card>
     </div>
   );

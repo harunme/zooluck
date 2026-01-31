@@ -3,14 +3,49 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  position: relative;
+}
+
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  padding: 20px;
+  position: relative;
+}
+
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1;
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 40px rgba(44, 95, 45, 0.25);
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
 }
 
 .login-header {
@@ -19,15 +54,16 @@
 }
 
 .login-header h1 {
-  font-size: 28px;
-  color: #333;
+  font-size: 32px;
+  color: #2c5f2d;
   margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
-.demo-tip {
-  text-align: center;
-  color: #999;
-  font-size: 12px;
-  margin-top: 15px;
+/* Icon color theme */
+.login-card .anticon {
+  color: #5a9c5b;
 }
+
 

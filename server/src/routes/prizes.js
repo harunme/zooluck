@@ -1,10 +1,11 @@
 import express from 'express';
 import pool from '../db.js';
+import { authenticateToken } from './auth.js';
 
 const router = express.Router();
 
-// Get all prizes
-router.get('/', async (_, res) => {
+// Get all prizes (需要认证)
+router.get('/', authenticateToken, async (_, res) => {
   try {
     const connection = await pool.getConnection();
     const [prizes] = await connection.query('SELECT * FROM prizes ORDER BY id');
@@ -16,11 +17,11 @@ router.get('/', async (_, res) => {
   }
 });
 
-// Create prize
-router.post('/', async (req, res) => {
+// Create prize (需要认证)
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, image, quantity, supplier } = req.body;
-    
+
     if (!name || !quantity || !supplier) {
       return res.status(400).json({ message: 'Missing required fields: name, quantity, supplier' });
     }
@@ -45,14 +46,14 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update prize
-router.put('/:id', async (req, res) => {
+// Update prize (需要认证)
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const prizeId = parseInt(req.params.id);
     const { name, image, quantity, supplier } = req.body;
 
     const connection = await pool.getConnection();
-    
+
     // Check if prize exists
     const [prizes] = await connection.query('SELECT * FROM prizes WHERE id = ?', [prizeId]);
     if (prizes.length === 0) {
@@ -63,7 +64,7 @@ router.put('/:id', async (req, res) => {
     // Update prize
     const updateFields = [];
     const updateValues = [];
-    
+
     if (name !== undefined) {
       updateFields.push('name = ?');
       updateValues.push(name);
@@ -101,12 +102,12 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete prize
-router.delete('/:id', async (req, res) => {
+// Delete prize (需要认证)
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const prizeId = parseInt(req.params.id);
     const connection = await pool.getConnection();
-    
+
     // Check if prize exists
     const [prizes] = await connection.query('SELECT * FROM prizes WHERE id = ?', [prizeId]);
     if (prizes.length === 0) {

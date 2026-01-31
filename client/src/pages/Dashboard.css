@@ -6,7 +6,7 @@
 }
 
 .dashboard-header {
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  /* background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); */
   border-bottom: 1px solid #e8e8e8;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   padding: 0 32px;
@@ -27,14 +27,17 @@
   width: 100%;
 }
 
-.header-content h1 {
-  font-size: 24px;
-  margin: 0;
-  color: #1f2937;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  white-space: nowrap;
+.logo-wrapper {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-logo {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
 }
 
 .nav-center {
@@ -65,13 +68,13 @@
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; */
   color: white !important;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  /* box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); */
 }
 
 .nav-btn.active:hover {
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  /* box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); */
 }
 
 .user-info {
@@ -156,9 +159,8 @@
     flex-wrap: wrap;
   }
 
-  .header-content h1 {
-    font-size: 18px;
-    width: 100%;
+  .header-logo {
+    height: 40px;
   }
 
   .nav-center {

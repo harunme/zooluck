@@ -10,6 +10,7 @@
     "@ant-design/icons": "^5.2.6",
     "dayjs": "^1.11.10"
   },
+  "proxy": "http://localhost:3001",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",

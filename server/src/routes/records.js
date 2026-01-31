@@ -1,16 +1,17 @@
 import express from 'express';
 import pool from '../db.js';
+import { authenticateToken } from './auth.js';
 
 const router = express.Router();
 
-// Get all records
-router.get('/', async (_, res) => {
+// Get all records (需要认证)
+router.get('/', authenticateToken, async (_, res) => {
   try {
     const connection = await pool.getConnection();
     const [records] = await connection.query(`
-      SELECT r.id, r.prize_id, r.phone, r.vipcard, r.quantity, r.record_type, r.status, r.created_at, r.updated_at, p.name as prize_name 
-      FROM records r 
-      LEFT JOIN prizes p ON r.prize_id = p.id 
+      SELECT r.id, r.prize_id, r.phone, r.vipcard, r.quantity, r.record_type, r.status, r.created_at, r.updated_at, p.name as prize_name
+      FROM records r
+      LEFT JOIN prizes p ON r.prize_id = p.id
       ORDER BY r.created_at DESC
     `);
     connection.release();
@@ -21,14 +22,14 @@ router.get('/', async (_, res) => {
   }
 });
 
-// Update record
-router.put('/:id', async (req, res) => {
+// Update record (需要认证)
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const recordId = parseInt(req.params.id);
     const { quantity, record_type, status } = req.body;
 
     const connection = await pool.getConnection();
-    
+
     // Check if record exists
     const [records] = await connection.query('SELECT * FROM records WHERE id = ?', [recordId]);
     if (records.length === 0) {
@@ -38,7 +39,7 @@ router.put('/:id', async (req, res) => {
 
     const updateFields = [];
     const updateValues = [];
-    
+
     if (quantity !== undefined) {
       updateFields.push('quantity = ?');
       updateValues.push(parseInt(quantity));
@@ -71,12 +72,12 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete record
-router.delete('/:id', async (req, res) => {
+// Delete record (需要认证)
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const recordId = parseInt(req.params.id);
     const connection = await pool.getConnection();
-    
+
     const [records] = await connection.query('SELECT * FROM records WHERE id = ?', [recordId]);
     if (records.length === 0) {
       connection.release();

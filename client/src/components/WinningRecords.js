@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
 import {
   Card,
   Table,
@@ -15,8 +14,7 @@ import {
   Spin,
 } from 'antd';
 import { SearchOutlined, DeleteOutlined } from '@ant-design/icons';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import { get, put, del } from '../utils/api.js';
 
 function WinningRecords() {
   const [records, setRecords] = useState([]);
@@ -36,8 +34,9 @@ function WinningRecords() {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/records`);
-      const formattedRecords = response.data.map((record) => ({
+      const response = await get('/records');
+      const data = await response.json();
+      const formattedRecords = data.map((record) => ({
         ...record,
         key: record.id,
       }));
@@ -108,11 +107,15 @@ function WinningRecords() {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      
-      await axios.put(`${API_BASE_URL}/records/${editingRecord.id}`, {
+
+      const response = await put(`/records/${editingRecord.id}`, {
         quantity: parseInt(values.quantity),
         status: parseInt(values.status),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to save record');
+      }
 
       setRecords(
         records.map((r) =>
@@ -141,7 +144,10 @@ function WinningRecords() {
       cancelText: '取消',
       onOk: async () => {
         try {
-          await axios.delete(`${API_BASE_URL}/records/${id}`);
+          const response = await del(`/records/${id}`);
+          if (!response.ok) {
+            throw new Error('Failed to delete record');
+          }
           setRecords(records.filter((r) => r.id !== id));
           message.success('删除成功');
         } catch (error) {
@@ -273,8 +279,8 @@ function WinningRecords() {
               options={yearOptions}
               style={{ width: 150 }}
             />
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               onClick={() => {
                 setCurrentPage(1);
               }}

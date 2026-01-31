@@ -1,13 +1,35 @@
 import express from 'express';
 import pool from '../db.js';
+import { authenticateToken } from './auth.js';
 
 const router = express.Router();
 
-// Update redeem password (legacy endpoint)
-router.put('/redeem-password', async (req, res) => {
+// Get redeem password (需要认证)
+router.get('/redeem-password', authenticateToken, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query(
+      'SELECT setting_value as value FROM settings WHERE setting_key = ?',
+      ['redeem_password']
+    );
+    connection.release();
+
+    if (rows.length > 0) {
+      res.json({ value: rows[0].value });
+    } else {
+      res.json({ value: null });
+    }
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Update redeem password (需要认证)
+router.put('/redeem-password', authenticateToken, async (req, res) => {
   try {
     const { redeemPassword } = req.body;
-    
+
     if (!redeemPassword) {
       return res.status(400).json({ message: 'redeemPassword is required' });
     }

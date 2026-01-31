@@ -6,6 +6,23 @@ import db from '../db.js';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'zooluck-secret-key-2026';
 
+// 中间件：验证token
+export const authenticateToken = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: '未授权访问' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'token无效或已过期' });
+  }
+};
+
 // 登录
 router.post('/login', async (req, res) => {
   try {
@@ -106,21 +123,52 @@ router.post('/create', async (req, res) => {
   }
 });
 
-// 中间件：验证token
-export const authenticateToken = (req, res, next) => {
+// 修改密码
+router.post('/change-password', authenticateToken, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const { currentPassword, newPassword } = req.body;
 
-    if (!token) {
-      return res.status(401).json({ success: false, message: '未授权访问' });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: '当前密码和新密码不能为空' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
+    if (newPassword.length < 4) {
+      return res.status(400).json({ message: '新密码长度不能少于4位' });
+    }
+
+    // 查询用户
+    const [admins] = await db.query(
+      'SELECT * FROM admins WHERE username = ?',
+      [req.user.username]
+    );
+
+    if (admins.length === 0) {
+      return res.status(404).json({ message: '用户不存在' });
+    }
+
+    const admin = admins[0];
+
+    // 验证当前密码
+    const isValidPassword = await bcrypt.compare(currentPassword, admin.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ message: '当前密码错误' });
+    }
+
+    // 加密新密码
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // 更新密码
+    await db.query(
+      'UPDATE admins SET password = ? WHERE id = ?',
+      [hashedNewPassword, admin.id]
+    );
+
+    res.json({ message: '密码修改成功' });
   } catch (error) {
-    res.status(401).json({ success: false, message: 'token无效或已过期' });
+    console.error('Change password error:', error);
+    res.status(500).json({ message: '服务器错误' });
   }
-};
+});
 
 export default router;

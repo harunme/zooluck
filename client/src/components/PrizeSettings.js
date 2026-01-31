@@ -13,19 +13,15 @@ import {
   Spin,
   Upload,
 } from 'antd';
-import { PlusOutlined, LockOutlined, UploadOutlined } from '@ant-design/icons';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { get, post, put, del } from '../utils/api.js';
 
 function PrizeSettings() {
   const [prizes, setPrizes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const [passwordForm] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
   // 初始加载奖品数据
@@ -36,7 +32,7 @@ function PrizeSettings() {
   const fetchPrizes = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/prizes`);
+      const response = await get('/prizes');
       if (!response.ok) {
         throw new Error('Failed to fetch prizes');
       }
@@ -72,13 +68,7 @@ function PrizeSettings() {
 
       if (editingId) {
         // 更新奖品
-        const response = await fetch(`${API_BASE_URL}/prizes/${editingId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
+        const response = await put(`/prizes/${editingId}`, values);
 
         if (!response.ok) {
           throw new Error('Failed to update prize');
@@ -93,13 +83,7 @@ function PrizeSettings() {
         message.success('编辑奖品成功');
       } else {
         // 添加新奖品
-        const response = await fetch(`${API_BASE_URL}/prizes`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
+        const response = await post('/prizes', values);
 
         if (!response.ok) {
           throw new Error('Failed to create prize');
@@ -123,9 +107,7 @@ function PrizeSettings() {
   const handleDelete = async (id) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/prizes/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await del(`/prizes/${id}`);
 
       if (!response.ok) {
         throw new Error('Failed to delete prize');
@@ -138,54 +120,6 @@ function PrizeSettings() {
       message.error('删除奖品失败');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleShowPasswordModal = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/settings/redeem-password`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.value) {
-          passwordForm.setFieldsValue({ redeemPassword: data.value });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching password:', error);
-    }
-    setIsPasswordModalVisible(true);
-  };
-
-  const handleSavePassword = async () => {
-    try {
-      const values = await passwordForm.validateFields();
-      setPasswordLoading(true);
-      
-      const response = await fetch(`${API_BASE_URL}/settings/redeem-password`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redeemPassword: values.redeemPassword })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || '保存失败');
-      }
-
-      Modal.success({
-        title: '保存成功',
-        content: '兑奖密码已保存',
-        okText: '确定',
-        onOk() {
-          setPasswordLoading(false);
-          setIsPasswordModalVisible(false);
-          passwordForm.resetFields();
-        },
-      });
-    } catch (error) {
-      console.error('Error saving password:', error);
-      message.error(error.message || '保存失败');
-      setPasswordLoading(false);
     }
   };
 
@@ -309,14 +243,9 @@ function PrizeSettings() {
       <Card
         title="奖品设置"
         extra={
-          <Space>
-            <Button type="primary" icon={<LockOutlined />} onClick={handleShowPasswordModal}>
-              兑奖密码设置
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} loading={loading}>
-              添加奖品
-            </Button>
-          </Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} loading={loading}>
+            添加奖品
+          </Button>
         }
       >
         <Spin spinning={loading}>
@@ -438,36 +367,6 @@ function PrizeSettings() {
             >
               <Input placeholder="请输入奖品提供商" />
             </Form.Item>
-          </Form>
-        </Modal>
-
-        <Modal
-          title="兑奖密码设置"
-          open={isPasswordModalVisible}
-          onOk={handleSavePassword}
-          onCancel={() => setIsPasswordModalVisible(false)}
-          okText="保存"
-          cancelText="取消"
-          loading={passwordLoading}
-          width={500}
-          centered
-        >
-          <Form form={passwordForm} layout="vertical">
-            <Form.Item
-              name="redeemPassword"
-              rules={[
-                { required: true, message: '请输入兑奖密码' },
-                { min: 4, message: '密码长度不能少于4位' },
-              ]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="请输入兑奖密码（用于兑换奖品时验证）"
-                size="large"
-              />
-            </Form.Item>
-
-       
           </Form>
         </Modal>
       </Card>

@@ -32,7 +32,7 @@ function Dashboard({ user, onLogout }) {
     <Layout className="dashboard">
       <Header className="dashboard-header">
         <div className="header-content">
-          <h1>🎁 AI无界 智享未来</h1>
+          <h1>🎁 大连森林动物园</h1>
           
           <div className="nav-center">
             {navItems.map((item) => (

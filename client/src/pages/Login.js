@@ -21,7 +21,7 @@ function Login({ onLogin }) {
     <div className="login-container">
       <Card className="login-card" bordered={false}>
         <div className="login-header">
-          <h1>AI无界 智享未来</h1>
+          <h1>大连森林动物园</h1>
         </div>
         <Form
           form={form}

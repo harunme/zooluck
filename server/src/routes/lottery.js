@@ -4,6 +4,39 @@ import pool from '../db.js';
 const router = express.Router();
 
 /**
+ * 会员验证API
+ * @param {string} phone - 手机号
+ * @param {string} vipcard - 会员卡号
+ * @returns {Promise<Object>} - 验证结果
+ */
+async function verifyMember(phone, vipcard) {
+  return new Promise((resolve) => {
+    const url = 'https://dlzoo.fxota.com/ticket-api/scenic/checkCardInfo.json';
+    const reqdata = JSON.stringify({
+      content: JSON.stringify({ cardNo: vipcard.trim(), mobile: phone.trim() }),
+      merchantNo: "dj121501",
+      merextend: "",
+      method: "scenic.checkcardinfo",
+      sign: "55502055",
+      signType: "MD5",
+      version: "1.0"
+    });
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: reqdata
+    })
+      .then(res => res.json())
+      .then(data => resolve(data))
+      .catch(err => {
+        console.error('会员验证API调用失败:', err);
+        resolve(null);
+      });
+  });
+}
+
+/**
  * 按照概率获取随机奖品
  * 奖品数量即为权重，概率 = 奖品数量 / 所有奖品总数
  */
@@ -63,10 +96,35 @@ router.post('/api/lottery/draw', async (req, res) => {
     const connection = await pool.getConnection();
 
     try {
-      // 检查年卡是否已抽过奖
+      // ②验证会员身份
+      const memberResult = await verifyMember(phone, vipcard);
+
+      if (!memberResult) {
+        return res.json({
+          status: 2,
+          prizename: '会员验证失败。'
+        });
+      }
+
+      if (memberResult.Code !== "200") {
+        return res.json({
+          status: 2,
+          prizename: '会员验证失败。'
+        });
+      }
+
+      const content = JSON.parse(memberResult.Content);
+      if (content.subCode !== "1") {
+        return res.json({
+          status: 2,
+          prizename: '亲~您还不是会员哦。'
+        });
+      }
+
+      // ③验证是否已经参与抽奖
       const [existingRecords] = await connection.query(
-        'SELECT * FROM records WHERE vipcard = ? ORDER BY created_at DESC LIMIT 1',
-        [vipcard]
+        'SELECT * FROM records WHERE vipcard = ? AND phone = ? ORDER BY created_at DESC LIMIT 1',
+        [vipcard, phone]
       );
 
       if (existingRecords.length > 0) {
@@ -75,16 +133,14 @@ router.post('/api/lottery/draw', async (req, res) => {
         if (lastRecord.status === 1) {
           return res.json({
             status: 4,
-            prizename: '您已经领取过奖品',
-            record_id: lastRecord.id,
-            lottery_id: lastRecord.prize_id
+            prizename: `亲~已经中奖!已兑奖~[${lastRecord.prizename}]${lastRecord.created_at}`,
+            record_id: lastRecord.id
           });
         }
 
-        const [prize] = await connection.query('SELECT name FROM prizes WHERE id = ?', [lastRecord.prize_id]);
         return res.json({
           status: 3,
-          prizename: prize.length > 0 ? prize[0].name : '奖品',
+          prizename: `亲~已经中奖!请兑奖~[${lastRecord.prizename}]${lastRecord.created_at}`,
           record_id: lastRecord.id,
           lottery_id: lastRecord.prize_id
         });
@@ -108,6 +164,9 @@ router.post('/api/lottery/draw', async (req, res) => {
       res.json({
         status: 1,
         prizename: prize.name,
+        prizeimg: prize.image || '',
+        cardno: vipcard,
+        phone: phone,
         record_id: recordId,
         lottery_id: prize.id
       });

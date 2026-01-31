@@ -2,13 +2,10 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  /* background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); */
 }
 
 .dashboard-header {
-  /* background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); */
-  border-bottom: 1px solid #e8e8e8;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   padding: 0 32px;
   height: 70px !important;
   position: sticky;
@@ -102,9 +99,6 @@
 
 .content-card {
   width: 100%;
-  background: white;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
   display: flex;
   flex-direction: column;
 }

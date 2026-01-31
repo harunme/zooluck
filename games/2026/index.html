@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- <meta http-equiv="X-UA-Compatible" content="IE=edge"> -->
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+    />
+    <title>马上有礼</title>
+    <script src="./js/jquery-1.8.0.min.js"></script>
+    <style>
+      body {
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        position: relative;
+        background-color: #44a6ef;
+      }
+
+      .notice {
+        /* border: 1px solid red; */
+        box-sizing: border-box;
+        position: fixed;
+        top: 0;
+        left: 0;
+        padding: 10vw;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        z-index: 9999;
+        overflow-y: auto;
+        display: none;
+      }
+
+      /* 顶部开始按钮 */
+      #button {
+        position: absolute;
+        bottom: 80px;
+      }
+
+      #button > img {
+        margin: 0 auto;
+        display: block;
+        width: 100%;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0 auto;
+        padding: 0;
+        text-align: center;
+      }
+
+      .cover {
+        width: 17.73333333vw;
+        height: 20.23988006vh;
+        position: absolute;
+        right: 20vw;
+        top: 26.98650675vh;
+      }
+
+      .box-bg,
+      .conveyer-belt-wrap {
+        position: absolute;
+        width: 54.93333333vw;
+        height: 31.25937031vh;
+        background-color: #69fffe;
+        left: 0;
+        right: 0;
+        z-index: -1;
+        bottom: 22.48875562vh;
+        overflow: hidden;
+      }
+
+      .mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 999999;
+        display: none;
+      }
+
+      .mask.show {
+        display: block;
+      }
+
+      .lottery-draw {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+      }
+
+      .lottery-draw.show {
+        display: block;
+      }
+
+      .lottery-draw .lottery-draw-form {
+        width: 68vw;
+        height: 45.72713643vh;
+        background-image: url(./images/lottery-draw-bg.png);
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        margin-bottom: 2.24887556vh;
+        position: relative;
+      }
+
+      .lottery-draw .lottery-draw-form input[type="text"] {
+        width: 40.53333333vw;
+        height: 3.14842579vh;
+        position: absolute;
+        background-color: transparent;
+        border: none;
+        outline: none;
+      }
+
+      .lottery-draw .lottery-draw-form input[name="tel"] {
+        left: 14.13333333vw;
+        top: 25.1874063vh;
+      }
+
+      .lottery-draw .lottery-draw-form input[name="no"] {
+        left: 14.13333333vw;
+        top: 32.83358321vh;
+      }
+
+      .lottery-draw .lottery-draw-button {
+        width: 33.33333333vw;
+        height: 5.09745127vh;
+        transition: transform 0.1s ease;
+        transform: scale(1);
+      }
+
+      .lottery-draw .lottery-draw-button:active {
+        transform: scale(0.9);
+      }
+
+      .result {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background-image: url("./images/result-bg.png");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        width: 85.86666667vw;
+        height: 57.34632684vh;
+        display: none;
+      }
+
+      .result.show {
+        display: block;
+      }
+
+      .result .fireworks {
+        width: 80%;
+        height: 80%;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        margin-top: -24vh;
+        margin-left: -32vw;
+        transform-origin: center center;
+        animation: turn 10s infinite ease;
+      }
+
+      .result .result-card {
+        width: 52vw;
+        height: 19.49025487vh;
+        background-image: url("./images/card.png");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 100% 100%;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 8.24587706vh;
+        transition: all 0.4s ease-in-out;
+      }
+
+      .result .result-card.show {
+        bottom: 26.08695652vh;
+      }
+
+      .result .result-card p {
+        width: 90%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -80%);
+        font-size: 16px;
+      }
+
+      .result .bag-cover {
+        width: 85.73333333vw;
+        height: 33.13343328vh;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+      }
+
+      @keyframes turn {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        overflow: hidden;
+        background: #fff;
+        z-index: 999;
+      }
+
+      .loader {
+        width: 40px;
+        height: 40px;
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        margin: auto;
+        -webkit-animation: loader-1 2s infinite linear;
+        animation: loader-1 2s infinite linear;
+        font-size: 40px;
+      }
+
+      .loader:before,
+      .loader:after {
+        box-sizing: inherit;
+        content: "";
+        width: 0;
+        height: 0;
+        border: 0.5em solid #eb145f;
+        display: block;
+        position: absolute;
+        border-radius: 100%;
+        -webkit-animation: loader-2 2s infinite ease-in-out;
+        animation: loader-2 2s infinite ease-in-out;
+      }
+
+      .loader:before {
+        top: 0;
+        left: 50%;
+      }
+
+      .loader:after {
+        bottom: 0;
+        right: 50%;
+        -webkit-animation-delay: -1s;
+        animation-delay: -1s;
+      }
+
+      @-webkit-keyframes loader-1 {
+        100% {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes loader-1 {
+        100% {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+
+      @-webkit-keyframes loader-2 {
+        0%,
+        100% {
+          -webkit-transform: scale(0);
+          transform: scale(0);
+        }
+
+        50% {
+          -webkit-transform: scale(1);
+          transform: scale(1);
+        }
+      }
+
+      @keyframes loader-2 {
+        0%,
+        100% {
+          -webkit-transform: scale(0);
+          transform: scale(0);
+        }
+
+        50% {
+          -webkit-transform: scale(1);
+          transform: scale(1);
+        }
+      }
+
+      .paly-btn {
+        position: fixed;
+        top: 2vh;
+        right: 2vw;
+        width: 10vw;
+        height: 10vw;
+        transform-origin: center center;
+        z-index: 99909;
+      }
+
+      .paly-btn.playing {
+        animation: turn 3s infinite;
+      }
+
+      .tip {
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.4vw;
+        position: absolute;
+        bottom: 5vh;
+        left: 0;
+        right: 0;
+      }
+
+      .tip input,
+      .tip span {
+        margin: 0;
+      }
+
+      .notice {
+        position: fixed;
+        top: 0;
+        left: 0;
+        padding: 10vw;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        z-index: 9999;
+        overflow-y: auto;
+        display: none;
+      }
+
+      .notice h4 {
+        font-size: 4vw;
+        margin-bottom: 4vw;
+      }
+
+      .notice p {
+        line-height: 2;
+        font-size: 3.6vw;
+        text-align: left;
+        margin-bottom: 3vh;
+      }
+
+      .exchange {
+        position: absolute;
+        bottom: 5vh;
+        width: 100%;
+        display: none;
+      }
+
+      .exchange input {
+        background-color: #fff;
+        border-radius: 5vw;
+        line-height: 1;
+        padding: 1.4vh 4vw;
+        width: 80%;
+        margin: 0 auto;
+        border: none;
+        outline: none;
+        text-align: center;
+        margin-bottom: 1vh;
+        font-size: 4vw;
+      }
+
+      .exchange .btn {
+        border-radius: 5vw;
+        background-color: yellowgreen;
+        line-height: 1;
+        padding: 1.5vh 4vw;
+        width: 80%;
+        color: #fff;
+        margin: 0 auto;
+        font-size: 4vw;
+      }
+    </style>
+    <style>
+      @keyframes slideInFromRight {
+        0% {
+          transform: translateX(100vw);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes dropFromTop {
+        0% {
+          transform: translateY(-100vh) rotate(-10deg);
+        }
+        80% {
+          transform: translateY(-400px) rotate(3deg); /* 落地超过一点 */
+        }
+        90% {
+          transform: translateY(-410px) rotate(-2deg); /* 弹起 */
+        }
+        100% {
+          transform: translateY(-400px) rotate(0deg); /* 稳定 */
+        }
+      }
+
+      @keyframes swing {
+        0%,
+        100% {
+          transform: rotate(0deg);
+        }
+        50% {
+          transform: rotate(3deg);
+        }
+      }
+
+      @keyframes breathingGlow {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.15);
+        }
+      }
+      #game-content {
+        /* border: 1px solid red; */
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+      }
+      #game-title {
+        width: 100%;
+        position: absolute;
+        z-index: 999;
+        left: 0;
+        top: 4vh;
+        animation: swing 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+      }
+      #game-background {
+        width: 100%;
+        bottom: 0;
+        position: absolute;
+        left: 0;
+      }
+      #game-zoologo {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        width: 200px;
+        z-index: 9999;
+      }
+      #game-flowers {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        z-index: 999;
+        width: 100%;
+      }
+      #game-tree {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 999;
+      }
+      #game-start {
+        position: absolute;
+        z-index: 9999;
+        left: 0;
+        width: 200px;
+        bottom: 72px;
+        left: 25%;
+        animation: breathingGlow 2s ease-in-out infinite;
+      }
+      #game-horse {
+        position: absolute;
+        z-index: 9999;
+        bottom: 20vh;
+        left: 0;
+        width: 100%;
+        animation: slideInFromRight 8s forwards;
+      }
+      #game-gift {
+        position: absolute;
+        z-index: 9999;
+        /* bottom: 200px; */
+        left: 180px;
+        width: 120px;
+        animation: dropFromTop 11s forwards;
+      }
+    </style>
+  </head>
+
+  <body>
+    <img id="game-title" src="./images/title.png" />
+    <img id="game-zoologo" src="./images/zoologo.png" />
+    <img id="game-tree" src="./images/tree.png" />
+    <div id="game-content">
+      <img id="game-background" src="./images/background.png" />
+      <img id="game-flowers" src="./images/flowers.png" />
+      <img id="game-start" src="./images/button.png" />
+      <img id="game-horse" src="./images/horse.png" />
+      <img id="game-gift" src="./images/gift.png" />
+    </div>
+    <audio
+      id="bg-music"
+      muted="muted"
+      class="bg-music"
+      src="./music/bg.mp3"
+      loop=""
+    ></audio>
+
+    <img class="paly-btn" src="./images/palying.png" />
+
+    <!-- <div id="fireworks">
+      <img src="./images/fireworks.gif" />
+    </div> -->
+    <div class="notice">
+      <h4>《2026年卡抽奖注意事项》</h4>
+      <p>
+        ①
+        每张年卡仅限一次抽奖机会，中奖率100%。抽奖活动截止日期2026年12月31日，逾期未抽奖者将失去抽奖资格，逾期未领奖者将视为放弃奖品。
+      </p>
+      <p>
+        ②
+        年卡号为卡背面10位号码（英文+数字），预留电话为开卡时所登记的电话号码。
+      </p>
+      <p>③ 兑奖地点为大连森林动物园年卡中心（散养区入口处）。</p>
+      <p>④ 兑奖时，需向工作人员出示年卡实体卡及微信中奖信息界面。</p>
+    </div>
+
+    <div class="mask">
+      <!-- 输入手机号 -->
+      <div class="lottery-draw show">
+        <div class="lottery-draw-form">
+          <input name="tel" type="text" id="phoneId" />
+          <input name="no" type="text" id="vipcardId" />
+          <div class="tip">
+            <input type="checkbox" id="checkbox-id" checked="" /><span
+              class="tip-content"
+              >《已阅读2026年抽奖注意事项》</span
+            >
+          </div>
+        </div>
+        <img
+          class="lottery-draw-button"
+          src="./images/lottery-draw-button.png"
+        />
+      </div>
+      <!-- 抽奖结果 -->
+      <div class="result">
+        <img class="fireworks" src="./images/fireworks.png" />
+        <div class="result-card">
+          <!-- 奖品内容 -->
+          <p id="prizenameTxt">奖品是。。。</p>
+        </div>
+        <img class="bag-cover" src="./images/bag-cover.png" />
+      </div>
+      <div class="exchange dj">
+        <input
+          type="tel"
+          placeholder="请工作人员填入兑奖码"
+          id="exchangeInfo"
+          name="parssword"
+          value=""
+        />
+        <div class="btn join">点击兑奖</div>
+      </div>
+    </div>
+    <script>
+      // 微信自动播放音频
+      // function audioAutoPlay(id) {
+      //   var audio = document.getElementById(id);
+      //   audio.play();
+      //   document.addEventListener("WeixinJSBridgeReady", function () {
+      //     audio.play();
+      //   }, false);
+      //   document.addEventListener('YixinJSBridgeReady', function () {
+      //     audio.play();
+      //   }, false);
+      // }
+
+      $(function () {
+        var loading = false;
+        // 初始化视口大小
+        // initViewport(window.innerWidth > window.innerHeight ? window.innerWidth : window.innerHeight);
+
+        // ios  输入后页面不退回问题对应
+        document.body.addEventListener("focusout", function () {
+          var top = document.body.scrollTop;
+          if (top != 0) {
+            top = top - 1;
+          }
+          document.body.scrollTop = top;
+        });
+
+        // audioAutoPlay('bg-music');
+
+        // 点击戳一下按钮
+        $("#game-start").click(function () {
+          $(".mask").toggleClass("show");
+        });
+
+        // 点击开始抽奖按钮
+        $(".lottery-draw-button").click(function () {
+          if (loading) {
+            return;
+          }
+          // 此处setTimeout 换成ajax
+          var phone = $("#phoneId")
+            .val()
+            .replace(/[~'!<>@#$%^&*()-+_=:]/g, "");
+          var vipcard = $("#vipcardId")
+            .val()
+            .replace(/[~'!<>@#$%^&*()-+_=:]/g, "");
+          var error = false;
+          if (typeof phone == "undefined" || phone == "") {
+            alert("请填写手机号!");
+            var error = true;
+          }
+          if (typeof vipcard == "undefined" || vipcard == "") {
+            alert("请输入年卡号!");
+            var error = true;
+          }
+          var checkbox_id = $("#checkbox-id").prop("checked");
+
+          if (!checkbox_id) {
+            alert("请确认已阅读《2021年卡抽奖注意事项》!");
+            var error = true;
+          }
+          if (!error) {
+            loading = true;
+            ajaxGetPrize();
+          }
+        });
+
+        $(".paly-btn").click(function () {
+          var audio = document.getElementById("bg-music");
+          console.log(audio);
+          if ($(this).hasClass("playing")) {
+            audio.pause();
+          } else {
+            audio.play();
+          }
+          $(this).toggleClass("playing");
+        });
+
+        $(".tip-content").click(function () {
+          $(".notice").show();
+        });
+
+        $(".notice").click(function () {
+          $(this).hide();
+        });
+
+        function win() {
+          running = false;
+          $(".left,.right").removeClass("open");
+          cancelAnimationFrame(timer);
+          $(".mask").toggleClass("show");
+        }
+
+        // 异步执行抽奖
+        function ajaxGetPrize() {
+          var phoneId = $("#phoneId").val();
+          var vipcardId = $("#vipcardId").val();
+          var token = $("#v_token").val();
+          var id = $("#v_id").val();
+          $.ajax({
+            url: "/api/lottery/draw",
+            type: "POST",
+            dataType: "json",
+            async: true,
+            data: {
+              id: id,
+              vipcard: vipcardId,
+              phone: phoneId,
+              token: token,
+            },
+
+            success: function (res) {
+              if (2 == res.status) {
+                //各种未能中奖、错误情况
+                alert(res.prizename);
+
+                //$('#prizenameTxt').text(res.prizename);
+                $(".lottery-draw").show();
+                //$('.result').hide();
+                $(".result").removeClass("show");
+                $(".exchange").hide();
+                loading = false;
+                return;
+              } else {
+                if (1 == res.status) {
+                  //中奖
+
+                  $("#prizenameTxt").text(res.prizename);
+                  $(".exchange").show();
+                }
+                if (3 == res.status) {
+                  //中奖未兑奖
+                  $("#prizenameTxt").text(res.prizename);
+                  $(".exchange").show();
+                }
+                if (4 == res.status) {
+                  //中奖已兑奖
+                  $("#prizenameTxt").text(res.prizename);
+                  $(".exchange").hide();
+                }
+
+                $(".lottery-draw").removeClass("show");
+                $(".result").addClass("show");
+                //$('.result').show();
+                $(".result-card").toggleClass("show");
+              }
+            },
+            error: function () {
+              alert("亲系统忙，请返回再试一下~");
+              loading = false;
+            },
+          });
+        }
+
+        $(document).ready(function () {
+          $(".join").click(function () {
+            var parssword = $("#exchangeInfo").val();
+            if (parssword == "") {
+              alert("请填写兑奖码!");
+              return false;
+            }
+            var phone = $("#phoneId").val();
+            var vipcard = $("#vipcardId").val();
+            $.ajax({
+              url: "/api/lottery/exchange",
+              type: "POST",
+              dataType: "json",
+              async: true,
+
+              data: {
+                parssword: parssword,
+                phone: phone,
+                vipcard: vipcard,
+              },
+
+              success: function (res) {
+                alert(res.msg);
+                if (0 == res.error) {
+                  $(".exchange").hide();
+                  $("#exchange").text("已领奖");
+                }
+
+                setTimeout(function () {}, 500);
+              },
+            });
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

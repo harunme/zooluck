@@ -30,6 +30,9 @@ RUN cd /app/server && npm install --only=production
 # 复制后端源代码
 COPY server/src ./server/src
 
+# 复制游戏文件
+COPY games ./games
+
 # 复制 Nginx 配置文件
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 

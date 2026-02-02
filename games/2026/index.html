@@ -876,12 +876,12 @@
                 }
                 if (3 == res.status) {
                   //中奖未兑奖
-                  $("#prizenameTxt").text(res.prizename);
+                  $("#prizenameTxt").text("亲~已经中奖!请兑奖~[" + res.prizename + "]" + res.created_at);
                   $(".exchange").show();
                 }
                 if (4 == res.status) {
                   //中奖已兑奖
-                  $("#prizenameTxt").text(res.prizename);
+                  $("#prizenameTxt").text("亲~已经中奖!已兑奖~[" + res.prizename + "]" + res.created_at);
                   $(".exchange").hide();
                 }
 

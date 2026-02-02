@@ -122,7 +122,10 @@ router.post('/api/lottery/draw', async (req, res) => {
 
     // ③验证是否已经参与抽奖
     const lastRecord = await db.get(
-      'SELECT * FROM records WHERE vipcard = ? AND phone = ? ORDER BY created_at DESC LIMIT 1',
+      `SELECT r.*, p.name as prizename FROM records r
+       LEFT JOIN prizes p ON r.prize_id = p.id
+       WHERE r.vipcard = ? AND r.phone = ?
+       ORDER BY r.created_at DESC LIMIT 1`,
       [vipcard, phone]
     );
 
@@ -130,14 +133,16 @@ router.post('/api/lottery/draw', async (req, res) => {
       if (lastRecord.status === 1) {
         return res.json({
           status: 4,
-          prizename: `亲~已经中奖!已兑奖~[${lastRecord.prizename}]${lastRecord.created_at}`,
+          prizename: lastRecord.prizename,
+          created_at: lastRecord.created_at,
           record_id: lastRecord.id
         });
       }
 
       return res.json({
         status: 3,
-        prizename: `亲~已经中奖!请兑奖~[${lastRecord.prizename}]${lastRecord.created_at}`,
+        prizename: lastRecord.prizename,
+        created_at: lastRecord.created_at,
         record_id: lastRecord.id,
         lottery_id: lastRecord.prize_id
       });

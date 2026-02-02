@@ -1,7 +1,10 @@
 FROM node:18-alpine
 
-# 安装 nginx（用于静态文件服务）
-RUN apk add --no-cache nginx
+# 安装 nginx 和 ImageMagick（用于静态文件服务和图片压缩）
+RUN apk add --no-cache nginx imagemagick
+
+# 配置 ImageMagick
+COPY .imagemagick /etc/ImageMagick-7/policy.xml
 
 WORKDIR /app
 
@@ -21,6 +24,9 @@ COPY client/src ./client/src
 # 构建前端应用
 RUN cd /app/client && npm run build
 
+# 压缩图片资源
+RUN /app/compress-images.sh
+
 # 复制后端依赖文件
 COPY server/package*.json ./server/
 
@@ -32,6 +38,10 @@ COPY server/src ./server/src
 
 # 复制游戏文件
 COPY games ./games
+
+# 复制并执行图片压缩脚本
+COPY docker/compress-images.sh /app/compress-images.sh
+RUN chmod +x /app/compress-images.sh
 
 # 复制 Nginx 配置文件
 COPY docker/nginx.conf /etc/nginx/nginx.conf

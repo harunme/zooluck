@@ -482,7 +482,7 @@
     <!-- 加载界面 -->
     <div class="loading" id="loading">
       <div class="loading-progress">
-        <div class="loading-progress-text">祝您马到成功 <span id="loading-percent">0</span>%</div>
+        <div class="loading-progress-text">加载中<span id="loading-percent">0</span>%</div>
         <div class="loading-progress-bar">
           <div class="loading-progress-fill" id="loading-fill"></div>
         </div>
@@ -499,7 +499,7 @@
       <img id="game-horse" src="./images/horse.png" data-preload="true" />
       <img id="game-gift" src="./images/gift.png" data-preload="true" />
     </div>
-    <audio id="bg-music" class="bg-music" src="./music/bg.mp3" loop preload data-preload="true"></audio>
+    <audio id="bg-music" class="bg-music" src="./music/bg.mp3" loop preload="none"></audio>
 
     <img class="paly-btn" src="./images/palying.png" data-preload="true" />
 
@@ -605,15 +605,8 @@
               };
               img.src = src;
             } else if (type === 'audio') {
-              var audio = new Audio();
-              audio.oncanplaythrough = function() {
-                resolve({ src: src, type: type });
-              };
-              audio.onerror = function() {
-                resolve({ src: src, type: type, error: true });
-              };
-              audio.src = src;
-              audio.load();
+              // 音频不在此处加载，改为延迟加载
+              resolve({ src: src, type: type });
             } else {
               resolve({ src: src, type: type });
             }
@@ -666,13 +659,17 @@
               resources.push({ src: src, type: 'image' });
             }
           });
-          $('audio[data-preload="true"]').each(function() {
-            var src = $(this).attr('src');
-            if (src) {
-              resources.push({ src: src, type: 'audio' });
-            }
-          });
+          // 不再预加载音频，改为延迟加载
           return resources;
+        }
+
+        // 延迟加载音频资源
+        function lazyLoadAudio() {
+          var audio = document.getElementById('bg-music');
+          if (audio) {
+            audio.load();
+            console.log('音频已延迟加载');
+          }
         }
 
         // 启动动画
@@ -699,6 +696,11 @@
           setTimeout(function() {
             startAnimations();
           }, 300);
+
+          // 延迟加载音频
+          setTimeout(function() {
+            lazyLoadAudio();
+          }, 1000);
         }
 
         // 资源加载进度回调
@@ -787,10 +789,24 @@
         $(".paly-btn").click(function () {
           var audio = document.getElementById("bg-music");
           console.log(audio);
+
+          // 确保音频已加载
+          if (audio.readyState === 0) {
+            audio.load();
+          }
+
           if ($(this).hasClass("playing")) {
             audio.pause();
           } else {
-            audio.play();
+            // 使用Promise处理播放，避免因未加载完成而失败
+            var playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.then(function() {
+                // 播放成功
+              }).catch(function(error) {
+                console.log('音频播放失败:', error);
+              });
+            }
           }
           $(this).toggleClass("playing");
         });

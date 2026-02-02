@@ -1,56 +1,11 @@
-# Dependencies
-node_modules/
+node_modules
 npm-debug.log
-yarn-error.log
-
-# Build outputs
-dist/
-build/
-
-# Environment files
 .env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Git
-.git/
+.git
 .gitignore
-.gitattributes
-
-# Documentation
 README.md
 *.md
-docs/
-
-# Logs
-logs/
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
-
-# Scripts
-deploy.sh
-start.sh
-start-dev.sh
-
-# Backup
-*_backup_*/
-*.backup
-
-# Temporary files
-tmp/
-temp/
+!Dockerfile
+!docker-compose.yml
+!docker/
+!docker/**/*

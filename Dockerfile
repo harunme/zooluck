@@ -1,51 +1,34 @@
-# 多阶段构建 - 后端
-FROM node:18-alpine AS backend-builder
-
-WORKDIR /app/server
-
-# 复制后端依赖文件
-COPY server/package*.json ./
-
-# 安装后端依赖
-RUN npm ci --only=production
-
-# 复制后端源代码
-COPY server/src ./src
-COPY server/.env.example ./.env
-
-# 多阶段构建 - 前端
-FROM node:18-alpine AS frontend-builder
-
-WORKDIR /app/client
-
-# 复制前端依赖文件
-COPY client/package*.json ./
-
-# 安装前端依赖
-RUN npm ci
-
-# 复制前端源代码
-COPY client/public ./public
-COPY client/src ./src
-
-# 构建前端应用
-RUN npm run build
-
-# 生产环境镜像
 FROM node:18-alpine
-
-WORKDIR /app
 
 # 安装 nginx（用于静态文件服务）
 RUN apk add --no-cache nginx
 
-# 从后端构建阶段复制文件
-COPY --from=backend-builder /app/server/package*.json ./server/
-COPY --from=backend-builder /app/server/node_modules ./server/node_modules
-COPY --from=backend-builder /app/server/src ./server/src
+WORKDIR /app
 
-# 从前端构建阶段复制构建产物
-COPY --from=frontend-builder /app/client/build ./client/build
+# 配置 npm 使用国内镜像源
+RUN npm config set registry https://registry.npmmirror.com
+
+# 复制前端依赖文件
+COPY client/package*.json ./client/
+
+# 安装前端依赖
+RUN cd /app/client && npm install
+
+# 复制前端源代码
+COPY client/public ./client/public
+COPY client/src ./client/src
+
+# 构建前端应用
+RUN cd /app/client && npm run build
+
+# 复制后端依赖文件
+COPY server/package*.json ./server/
+
+# 安装后端依赖
+RUN cd /app/server && npm install --only=production
+
+# 复制后端源代码
+COPY server/src ./server/src
 
 # 复制游戏文件
 COPY games ./games

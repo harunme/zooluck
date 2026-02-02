@@ -24,6 +24,13 @@ COPY client/src ./client/src
 # 构建前端应用
 RUN cd /app/client && npm run build
 
+# 复制游戏文件
+COPY games ./games
+
+# 复制图片压缩脚本并设置权限
+COPY docker/compress-images.sh /app/compress-images.sh
+RUN chmod +x /app/compress-images.sh
+
 # 压缩图片资源
 RUN /app/compress-images.sh
 
@@ -35,13 +42,6 @@ RUN cd /app/server && npm install --only=production
 
 # 复制后端源代码
 COPY server/src ./server/src
-
-# 复制游戏文件
-COPY games ./games
-
-# 复制并执行图片压缩脚本
-COPY docker/compress-images.sh /app/compress-images.sh
-RUN chmod +x /app/compress-images.sh
 
 # 复制 Nginx 配置文件
 COPY docker/nginx.conf /etc/nginx/nginx.conf

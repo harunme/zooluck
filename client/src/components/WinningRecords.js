@@ -307,8 +307,7 @@ function WinningRecords() {
   ];
 
   return (
-    <Spin spinning={loading}>
-      <Card title="中奖记录">
+    <Card title="中奖记录">
         <Space direction="vertical" style={{ width: "100%" }} size="large">
           <Space wrap>
             <Input
@@ -425,7 +424,6 @@ function WinningRecords() {
           </Form>
         </Modal>
       </Card>
-    </Spin>
   );
 }
 

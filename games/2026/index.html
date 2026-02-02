@@ -208,87 +208,28 @@
         left: 0;
         overflow: hidden;
         background: #fff;
-        z-index: 999;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
       }
 
-      .loader {
-        width: 40px;
-        height: 40px;
-        position: absolute;
-        top: 0;
-        right: 0;
-        left: 0;
-        bottom: 0;
-        margin: auto;
-        -webkit-animation: loader-1 2s infinite linear;
-        animation: loader-1 2s infinite linear;
-        font-size: 40px;
+      .loading.hidden {
+        display: none;
       }
 
-      .loader:before,
-      .loader:after {
-        box-sizing: inherit;
-        content: "";
-        width: 0;
-        height: 0;
-        border: 0.5em solid #eb145f;
-        display: block;
-        position: absolute;
-        border-radius: 100%;
-        -webkit-animation: loader-2 2s infinite ease-in-out;
-        animation: loader-2 2s infinite ease-in-out;
-      }
-
-      .loader:before {
-        top: 0;
-        left: 50%;
-      }
-
-      .loader:after {
-        bottom: 0;
-        right: 50%;
-        -webkit-animation-delay: -1s;
-        animation-delay: -1s;
-      }
-
-      @-webkit-keyframes loader-1 {
-        100% {
-          -webkit-transform: rotate(360deg);
-          transform: rotate(360deg);
-        }
-      }
-
-      @keyframes loader-1 {
-        100% {
-          -webkit-transform: rotate(360deg);
-          transform: rotate(360deg);
-        }
-      }
-
-      @-webkit-keyframes loader-2 {
-        0%,
-        100% {
-          -webkit-transform: scale(0);
-          transform: scale(0);
-        }
-
-        50% {
-          -webkit-transform: scale(1);
-          transform: scale(1);
-        }
-      }
-
-      @keyframes loader-2 {
-        0%,
-        100% {
-          -webkit-transform: scale(0);
-          transform: scale(0);
-        }
-
-        50% {
-          -webkit-transform: scale(1);
-          transform: scale(1);
-        }
+      /* 加载期间隐藏游戏内容 */
+      body.loading-active #game-title,
+      body.loading-active #game-zoologo,
+      body.loading-active #game-tree,
+      body.loading-active #game-content,
+      body.loading-active .paly-btn,
+      body.loading-active .mask,
+      body.loading-active .notice,
+      body.loading-active #game-fireworks {
+        display: none !important;
+        visibility: hidden !important;
       }
 
       .paly-btn {
@@ -320,6 +261,34 @@
       .tip input,
       .tip span {
         margin: 0;
+      }
+
+      /* 加载进度条样式 */
+      .loading-progress {
+        width: 60%;
+        max-width: 300px;
+        text-align: center;
+      }
+
+      .loading-progress-text {
+        color: #333;
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+
+      .loading-progress-bar {
+        width: 100%;
+        height: 6px;
+        background-color: #e0e0e0;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .loading-progress-fill {
+        height: 100%;
+        background-color: #eb145f;
+        width: 0%;
+        transition: width 0.3s ease;
       }
 
       .notice {
@@ -510,21 +479,31 @@
   </head>
 
   <body>
-    <img id="game-title" src="./images/title.png" />
-    <img id="game-zoologo" src="./images/zoologo.png" />
-    <img id="game-tree" src="./images/tree.png" />
-    <div id="game-content">
-      <img id="game-background" src="./images/background.png" />
-      <img id="game-flowers" src="./images/flowers.png" />
-      <img id="game-start" src="./images/button.png" />
-      <img id="game-horse" src="./images/horse.png" />
-      <img id="game-gift" src="./images/gift.png" />
+    <!-- 加载界面 -->
+    <div class="loading" id="loading">
+      <div class="loading-progress">
+        <div class="loading-progress-text">祝您马到成功 <span id="loading-percent">0</span>%</div>
+        <div class="loading-progress-bar">
+          <div class="loading-progress-fill" id="loading-fill"></div>
+        </div>
+      </div>
     </div>
-    <audio id="bg-music" class="bg-music" src="./music/bg.mp3" loop></audio>
 
-    <img class="paly-btn" src="./images/palying.png" />
+    <img id="game-title" src="./images/title.png" data-preload="true" />
+    <img id="game-zoologo" src="./images/zoologo.png" data-preload="true" />
+    <img id="game-tree" src="./images/tree.png" data-preload="true" />
+    <div id="game-content">
+      <img id="game-background" src="./images/background.png" data-preload="true" />
+      <img id="game-flowers" src="./images/flowers.png" data-preload="true" />
+      <img id="game-start" src="./images/button.png" data-preload="true" />
+      <img id="game-horse" src="./images/horse.png" data-preload="true" />
+      <img id="game-gift" src="./images/gift.png" data-preload="true" />
+    </div>
+    <audio id="bg-music" class="bg-music" src="./music/bg.mp3" loop preload data-preload="true"></audio>
 
-    <div
+    <img class="paly-btn" src="./images/palying.png" data-preload="true" />
+
+      <div
       id="game-fireworks"
       style="
         display: none;
@@ -539,9 +518,10 @@
       <img
         src="./images/fireworks.gif"
         style="width: 100%; height: 100%; object-fit: cover"
+        data-preload="true"
       />
     </div>
-    <div class="mask">
+      <div class="mask">
       <!-- 输入手机号 -->
       <div class="lottery-draw show">
         <div class="lottery-draw-form">
@@ -557,6 +537,7 @@
         <img
           class="lottery-draw-button"
           src="./images/lottery-draw-button.png"
+          data-preload="true"
         />
       </div>
       <!-- 抽奖结果 -->
@@ -604,8 +585,148 @@
       //   }, false);
       // }
 
+      // 资源预加载系统
+      var resourceLoader = (function() {
+        var resources = [];
+        var loadedCount = 0;
+        var totalCount = 0;
+        var onProgress = null;
+        var onComplete = null;
+
+        function loadResource(src, type) {
+          return new Promise(function(resolve, reject) {
+            if (type === 'image') {
+              var img = new Image();
+              img.onload = function() {
+                resolve({ src: src, type: type });
+              };
+              img.onerror = function() {
+                resolve({ src: src, type: type, error: true });
+              };
+              img.src = src;
+            } else if (type === 'audio') {
+              var audio = new Audio();
+              audio.oncanplaythrough = function() {
+                resolve({ src: src, type: type });
+              };
+              audio.onerror = function() {
+                resolve({ src: src, type: type, error: true });
+              };
+              audio.src = src;
+              audio.load();
+            } else {
+              resolve({ src: src, type: type });
+            }
+          });
+        }
+
+        function updateProgress() {
+          var percent = Math.floor((loadedCount / totalCount) * 100);
+          if (onProgress) {
+            onProgress(percent, loadedCount, totalCount);
+          }
+        }
+
+        return {
+          init: function(resourcesList, progressCallback, completeCallback) {
+            resources = resourcesList;
+            totalCount = resources.length;
+            loadedCount = 0;
+            onProgress = progressCallback;
+            onComplete = completeCallback;
+
+            if (totalCount === 0) {
+              if (onComplete) onComplete();
+              return;
+            }
+
+            resources.forEach(function(resource) {
+              loadResource(resource.src, resource.type).then(function(result) {
+                loadedCount++;
+                updateProgress();
+                if (loadedCount >= totalCount && onComplete) {
+                  onComplete();
+                }
+              });
+            });
+          }
+        };
+      })();
+
       $(function () {
         var loading = false;
+        var animationsStarted = false;
+
+        // 收集所有需要预加载的资源
+        function collectResources() {
+          var resources = [];
+          $('img[data-preload="true"]').each(function() {
+            var src = $(this).attr('src');
+            if (src) {
+              resources.push({ src: src, type: 'image' });
+            }
+          });
+          $('audio[data-preload="true"]').each(function() {
+            var src = $(this).attr('src');
+            if (src) {
+              resources.push({ src: src, type: 'audio' });
+            }
+          });
+          return resources;
+        }
+
+        // 启动动画
+        function startAnimations() {
+          if (animationsStarted) return;
+          animationsStarted = true;
+
+          // 移除暂停状态，启动CSS动画
+          $('#game-horse').css('animation-play-state', 'running');
+          $('#game-gift').css('animation-play-state', 'running');
+          $('#game-title').css('animation-play-state', 'running');
+          $('#game-start').css('animation-play-state', 'running');
+        }
+
+        // 资源加载完成后的回调
+        function onAllResourcesLoaded() {
+          // 移除body的loading状态
+          $('body').removeClass('loading-active');
+
+          // 隐藏加载界面
+          $('#loading').addClass('hidden');
+
+          // 启动所有动画
+          setTimeout(function() {
+            startAnimations();
+          }, 300);
+        }
+
+        // 资源加载进度回调
+        function onLoadingProgress(percent, loaded, total) {
+          $('#loading-percent').text(percent);
+          $('#loading-fill').css('width', percent + '%');
+        }
+
+        // 初始化资源加载
+        function initResourceLoader() {
+          var resources = collectResources();
+
+          // 添加loading状态到body，隐藏所有游戏内容
+          $('body').addClass('loading-active');
+
+          // 先暂停所有动画，等资源加载完成后再启动
+          $('#game-horse').css('animation-play-state', 'paused');
+          $('#game-gift').css('animation-play-state', 'paused');
+          $('#game-title').css('animation-play-state', 'paused');
+          $('#game-start').css('animation-play-state', 'paused');
+
+          // 开始加载资源
+          resourceLoader.init(resources, onLoadingProgress, onAllResourcesLoaded);
+        }
+
+        // 初始化资源加载器
+        initResourceLoader();
+
         // 监听game-gift动画结束事件
         $("#game-gift").on("animationend", function () {
           // 礼物动画结束后显示烟花

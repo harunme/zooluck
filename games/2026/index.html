@@ -85,8 +85,8 @@
       }
 
       .lottery-draw .lottery-draw-form {
-        width: 68vw;
-        height: 45.72713643vh;
+        width: 260px;
+        height: 285px;
         background-image: url(./images/lottery-draw-bg.png);
         background-position: center center;
         background-repeat: no-repeat;
@@ -95,23 +95,16 @@
         position: relative;
       }
 
-      .lottery-draw .lottery-draw-form input[type="text"] {
-        width: 40.53333333vw;
-        height: 3.14842579vh;
-        position: absolute;
-        background-color: transparent;
-        border: none;
-        outline: none;
-      }
-
       .lottery-draw .lottery-draw-form input[name="tel"] {
-        left: 14.13333333vw;
-        top: 25.1874063vh;
+        position: relative;
+        border: none;
+        top: 147px;
       }
 
       .lottery-draw .lottery-draw-form input[name="no"] {
-        left: 14.13333333vw;
-        top: 32.83358321vh;
+        position: relative;
+        top: 172px;
+        border: none;
       }
 
       .lottery-draw .lottery-draw-button {
@@ -482,7 +475,9 @@
     <!-- 加载界面 -->
     <div class="loading" id="loading">
       <div class="loading-progress">
-        <div class="loading-progress-text">加载中<span id="loading-percent">0</span>%</div>
+        <div class="loading-progress-text">
+          加载中<span id="loading-percent">0</span>%
+        </div>
         <div class="loading-progress-bar">
           <div class="loading-progress-fill" id="loading-fill"></div>
         </div>
@@ -493,17 +488,27 @@
     <img id="game-zoologo" src="./images/zoologo.png" data-preload="true" />
     <img id="game-tree" src="./images/tree.png" data-preload="true" />
     <div id="game-content">
-      <img id="game-background" src="./images/background.png" data-preload="true" />
+      <img
+        id="game-background"
+        src="./images/background.png"
+        data-preload="true"
+      />
       <img id="game-flowers" src="./images/flowers.png" data-preload="true" />
       <img id="game-start" src="./images/button.png" data-preload="true" />
       <img id="game-horse" src="./images/horse.png" data-preload="true" />
       <img id="game-gift" src="./images/gift.png" data-preload="true" />
     </div>
-    <audio id="bg-music" class="bg-music" src="./music/bg.mp3" loop preload="none"></audio>
+    <audio
+      id="bg-music"
+      class="bg-music"
+      src="./music/bg.mp3"
+      loop
+      preload="none"
+    ></audio>
 
     <img class="paly-btn" src="./images/palying.png" data-preload="true" />
 
-      <div
+    <div
       id="game-fireworks"
       style="
         display: none;
@@ -521,7 +526,7 @@
         data-preload="true"
       />
     </div>
-      <div class="mask">
+    <div class="mask">
       <!-- 输入手机号 -->
       <div class="lottery-draw show">
         <div class="lottery-draw-form">
@@ -586,7 +591,7 @@
       // }
 
       // 资源预加载系统
-      var resourceLoader = (function() {
+      var resourceLoader = (function () {
         var resources = [];
         var loadedCount = 0;
         var totalCount = 0;
@@ -594,17 +599,17 @@
         var onComplete = null;
 
         function loadResource(src, type) {
-          return new Promise(function(resolve, reject) {
-            if (type === 'image') {
+          return new Promise(function (resolve, reject) {
+            if (type === "image") {
               var img = new Image();
-              img.onload = function() {
+              img.onload = function () {
                 resolve({ src: src, type: type });
               };
-              img.onerror = function() {
+              img.onerror = function () {
                 resolve({ src: src, type: type, error: true });
               };
               img.src = src;
-            } else if (type === 'audio') {
+            } else if (type === "audio") {
               // 音频不在此处加载，改为延迟加载
               resolve({ src: src, type: type });
             } else {
@@ -621,7 +626,7 @@
         }
 
         return {
-          init: function(resourcesList, progressCallback, completeCallback) {
+          init: function (resourcesList, progressCallback, completeCallback) {
             resources = resourcesList;
             totalCount = resources.length;
             loadedCount = 0;
@@ -633,8 +638,8 @@
               return;
             }
 
-            resources.forEach(function(resource) {
-              loadResource(resource.src, resource.type).then(function(result) {
+            resources.forEach(function (resource) {
+              loadResource(resource.src, resource.type).then(function (result) {
                 loadedCount++;
                 updateProgress();
                 if (loadedCount >= totalCount && onComplete) {
@@ -642,7 +647,7 @@
                 }
               });
             });
-          }
+          },
         };
       })();
 
@@ -653,10 +658,10 @@
         // 收集所有需要预加载的资源
         function collectResources() {
           var resources = [];
-          $('img[data-preload="true"]').each(function() {
-            var src = $(this).attr('src');
+          $('img[data-preload="true"]').each(function () {
+            var src = $(this).attr("src");
             if (src) {
-              resources.push({ src: src, type: 'image' });
+              resources.push({ src: src, type: "image" });
             }
           });
           // 不再预加载音频，改为延迟加载
@@ -665,10 +670,10 @@
 
         // 延迟加载音频资源
         function lazyLoadAudio() {
-          var audio = document.getElementById('bg-music');
+          var audio = document.getElementById("bg-music");
           if (audio) {
             audio.load();
-            console.log('音频已延迟加载');
+            console.log("音频已延迟加载");
           }
         }
 
@@ -678,35 +683,35 @@
           animationsStarted = true;
 
           // 移除暂停状态，启动CSS动画
-          $('#game-horse').css('animation-play-state', 'running');
-          $('#game-gift').css('animation-play-state', 'running');
-          $('#game-title').css('animation-play-state', 'running');
-          $('#game-start').css('animation-play-state', 'running');
+          $("#game-horse").css("animation-play-state", "running");
+          $("#game-gift").css("animation-play-state", "running");
+          $("#game-title").css("animation-play-state", "running");
+          $("#game-start").css("animation-play-state", "running");
         }
 
         // 资源加载完成后的回调
         function onAllResourcesLoaded() {
           // 移除body的loading状态
-          $('body').removeClass('loading-active');
+          $("body").removeClass("loading-active");
 
           // 隐藏加载界面
-          $('#loading').addClass('hidden');
+          $("#loading").addClass("hidden");
 
           // 启动所有动画
-          setTimeout(function() {
+          setTimeout(function () {
             startAnimations();
           }, 300);
 
           // 延迟加载音频
-          setTimeout(function() {
+          setTimeout(function () {
             lazyLoadAudio();
           }, 1000);
         }
 
         // 资源加载进度回调
         function onLoadingProgress(percent, loaded, total) {
-          $('#loading-percent').text(percent);
-          $('#loading-fill').css('width', percent + '%');
+          $("#loading-percent").text(percent);
+          $("#loading-fill").css("width", percent + "%");
         }
 
         // 初始化资源加载
@@ -714,16 +719,20 @@
           var resources = collectResources();
 
           // 添加loading状态到body，隐藏所有游戏内容
-          $('body').addClass('loading-active');
+          $("body").addClass("loading-active");
 
           // 先暂停所有动画，等资源加载完成后再启动
-          $('#game-horse').css('animation-play-state', 'paused');
-          $('#game-gift').css('animation-play-state', 'paused');
-          $('#game-title').css('animation-play-state', 'paused');
-          $('#game-start').css('animation-play-state', 'paused');
+          $("#game-horse").css("animation-play-state", "paused");
+          $("#game-gift").css("animation-play-state", "paused");
+          $("#game-title").css("animation-play-state", "paused");
+          $("#game-start").css("animation-play-state", "paused");
 
           // 开始加载资源
-          resourceLoader.init(resources, onLoadingProgress, onAllResourcesLoaded);
+          resourceLoader.init(
+            resources,
+            onLoadingProgress,
+            onAllResourcesLoaded
+          );
         }
 
         // 初始化资源加载器
@@ -801,11 +810,13 @@
             // 使用Promise处理播放，避免因未加载完成而失败
             var playPromise = audio.play();
             if (playPromise !== undefined) {
-              playPromise.then(function() {
-                // 播放成功
-              }).catch(function(error) {
-                console.log('音频播放失败:', error);
-              });
+              playPromise
+                .then(function () {
+                  // 播放成功
+                })
+                .catch(function (error) {
+                  console.log("音频播放失败:", error);
+                });
             }
           }
           $(this).toggleClass("playing");

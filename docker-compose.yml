@@ -16,6 +16,8 @@ services:
       - ./data:/app/server/data
       # 持久化日志
       - ./logs:/var/log/nginx
+      # SSL 证书
+      - ./docker/ssl:/etc/nginx/ssl:ro
     networks:
       - zooluck-network
     healthcheck:

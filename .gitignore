@@ -1,3 +1,6 @@
+# SSL 证书
+docker/ssl/
+
 # Dependencies
 node_modules
 .pnp

@@ -36,8 +36,8 @@ done
 
 # 保持容器运行
 echo "🎉 Application is running!"
-echo "   Frontend: http://localhost"
-echo "   Backend API: http://localhost/api"
+echo "   Frontend (HTTPS): https://localhost"
+echo "   Backend API: https://localhost/api"
 
 # 等待任一进程退出
 wait $NGINX_PID $BACKEND_PID

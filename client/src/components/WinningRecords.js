@@ -58,7 +58,10 @@ function WinningRecords() {
     const yearSet = new Set();
     records.forEach((r) => {
       if (r.created_at) {
-        const year = new Date(r.created_at).getFullYear().toString();
+        const date = new Date(r.created_at);
+        // 转换为北京时间
+        const beijingTime = new Date(date.getTime() + 8 * 3600000);
+        const year = beijingTime.getFullYear().toString();
         yearSet.add(year);
       }
     });
@@ -71,7 +74,10 @@ function WinningRecords() {
     if (selectedYear !== "all") {
       filtered = filtered.filter((r) => {
         if (r.created_at) {
-          const year = new Date(r.created_at).getFullYear().toString();
+          const date = new Date(r.created_at);
+          // 转换为北京时间
+          const beijingTime = new Date(date.getTime() + 8 * 3600000);
+          const year = beijingTime.getFullYear().toString();
           return year === selectedYear;
         }
         return false;
@@ -274,7 +280,18 @@ function WinningRecords() {
       width: 180,
       render: (text) => {
         if (!text) return "-";
-        return new Date(text).toLocaleString("zh-CN");
+        const date = new Date(text);
+        // 数据库存的是UTC时间，转换为北京时间（+8小时）
+        const beijingTime = new Date(date.getTime() + 8 * 3600000);
+        return beijingTime.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        });
       },
     },
     {

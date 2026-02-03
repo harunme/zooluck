@@ -14,7 +14,7 @@ COPY client/package*.json ./client/
 # 安装前端依赖
 RUN cd /app/client && npm install
 
-# 复制前端源代码
+# 复制前端源代码和证书验证目录
 COPY client/public ./client/public
 COPY client/src ./client/src
 

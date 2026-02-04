@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout, Button, Dropdown, Space, Card, Tooltip } from "antd";
+import { useNavigate, useLocation } from "react-router-dom";
 import PrizeSettings from "../components/PrizeSettings";
 import WinningRecords from "../components/WinningRecords";
 import SystemSettings from "../components/SystemSettings";
@@ -8,17 +9,32 @@ import "./Dashboard.css";
 
 const { Header, Content } = Layout;
 
-function Dashboard({ user }) {
-  const [activeTab, setActiveTab] = useState("record");
+function Dashboard({ user, defaultTab, onLogout }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(defaultTab || "record");
+
+  useEffect(() => {
+    if (location.pathname) {
+      const pathTab = location.pathname.replace("/", "");
+      if (["record", "prize", "system"].includes(pathTab)) {
+        setActiveTab(pathTab);
+      }
+    }
+  }, [location.pathname]);
 
   const navItems = [
-    { key: "record", label: "中奖记录" },
-    { key: "prize", label: "奖品设置" },
-    { key: "system", label: "系统设置" },
+    { key: "record", label: "中奖记录", path: "/record" },
+    { key: "prize", label: "奖品设置", path: "/prize" },
+    { key: "system", label: "系统设置", path: "/system" },
   ];
 
   const handleNavClick = (key) => {
     setActiveTab(key);
+    const item = navItems.find((item) => item.key === key);
+    if (item) {
+      navigate(item.path);
+    }
   };
 
   return (

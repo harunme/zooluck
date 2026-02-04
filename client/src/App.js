@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ConfigProvider, App as AntApp, theme, Spin } from "antd";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -47,20 +48,75 @@ function App() {
     },
   };
 
+  if (loading) {
+    return (
+      <ConfigProvider theme={customTheme}>
+        <AntApp>
+          <div className="loading-container">
+            <Spin size="large" tip="加载中..." />
+          </div>
+        </AntApp>
+      </ConfigProvider>
+    );
+  }
+
   return (
     <ConfigProvider theme={customTheme}>
       <AntApp>
-        <div className="App">
-          {loading ? (
-            <div className="loading-container">
-              <Spin size="large" tip="加载中..." />
-            </div>
-          ) : isLoggedIn ? (
-            <Dashboard user={user} />
-          ) : (
-            <Login onLogin={handleLogin} />
-          )}
-        </div>
+        <BrowserRouter>
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                isLoggedIn ? (
+                  <Navigate to="/record" replace />
+                ) : (
+                  <Login onLogin={handleLogin} />
+                )
+              }
+            />
+            <Route
+              path="/record"
+              element={
+                isLoggedIn ? (
+                  <Dashboard user={user} defaultTab="record" onLogout={handleLogout} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/prize"
+              element={
+                isLoggedIn ? (
+                  <Dashboard user={user} defaultTab="prize" onLogout={handleLogout} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/system"
+              element={
+                isLoggedIn ? (
+                  <Dashboard user={user} defaultTab="system" onLogout={handleLogout} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/"
+              element={
+                isLoggedIn ? (
+                  <Navigate to="/record" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+          </Routes>
+        </BrowserRouter>
       </AntApp>
     </ConfigProvider>
   );

@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "antd": "^5.11.0",
+    "axios": "^1.6.0",
+    "dayjs": "^1.11.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "axios": "^1.6.0",
-    "antd": "^5.11.0",
-    "@ant-design/icons": "^5.2.6",
-    "dayjs": "^1.11.10"
+    "react-router-dom": "^7.13.0"
   },
   "proxy": "http://localhost:3001",
   "scripts": {

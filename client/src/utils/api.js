@@ -8,6 +8,16 @@ export const getToken = () => {
 };
 
 /**
+ * 清除认证信息并跳转到登录页
+ */
+export const clearAuthAndRedirect = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  // 跳转到登录页
+  window.location.href = '/login';
+};
+
+/**
  * 创建带有认证信息的请求头
  */
 export const getAuthHeaders = () => {
@@ -38,6 +48,13 @@ export const apiRequest = async (endpoint, options = {}) => {
   };
 
   const response = await fetch(url, config);
+
+  // 检查是否为 401 错误（token 无效或过期）
+  if (response.status === 401) {
+    clearAuthAndRedirect();
+    throw new Error('登录已过期，请重新登录');
+  }
+
   return response;
 };
 

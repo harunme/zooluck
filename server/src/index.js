@@ -1,41 +1,31 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import prizeRoutes from './routes/prizes.js';
-import recordRoutes from './routes/records.js';
-import settingsRoutes from './routes/settings.js';
-import lotteryRoutes from './routes/lottery.js';
-import authRoutes from './routes/auth.js';
-import { initDB } from './db.js';
+import 'dotenv/config';
+import app, { setDraining } from './app.js';
+import { initDB, closeDB, databaseStats, databaseFileStats } from './db.js';
+import { startPasswords, closePasswords, passwordStats } from './passwords.js';
+import { membership } from './membership.js';
+import { imageCacheStats } from './image-cache.js';
+import { startMetrics } from './metrics.js';
 
-dotenv.config();
-
-const app = express();
 const PORT = process.env.PORT || 3001;
-
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// API 路由
-app.use('/api/auth', authRoutes);
-app.use('/api/prizes', prizeRoutes);
-app.use('/api/records', recordRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/', lotteryRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-
-// 404 处理：所有未匹配的 API 路由
-app.use((req, res) => {
-  res.status(404).json({ error: 'API route not found' });
-});
-
-app.listen(PORT, async () => {
-  await initDB();
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API endpoint: http://localhost:${PORT}/api`);
-});
+await initDB();
+await startPasswords();
+const stopMetrics = startMetrics(async () => ({ database: databaseStats(), ...await databaseFileStats(), passwords: passwordStats(), member: membership.stats(), images: imageCacheStats() }));
+const server = app.listen(PORT, () => console.log(`Server running on port ${server.address().port}`));
+let stopping = false;
+async function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  setDraining(true);
+  stopMetrics();
+  const deadline = setTimeout(() => { server.closeAllConnections(); process.exit(1); }, 10000);
+  deadline.unref();
+  try {
+    const closed = new Promise(resolve => server.close(resolve));
+    server.closeIdleConnections();
+    await Promise.all([closed, membership.drain()]);
+    await Promise.all([closeDB(), closePasswords()]);
+    clearTimeout(deadline);
+  } catch { process.exitCode = 1; }
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

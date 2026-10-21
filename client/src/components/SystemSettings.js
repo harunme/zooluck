@@ -33,8 +33,8 @@ function SystemSettings() {
         message.error(error.message || '获取兑奖密码失败');
       }
     } catch (error) {
-      console.error('Error fetching password:', error);
-      message.error('获取兑奖密码失败');
+      console.error('Error fetching password:');
+      message.error(error.userMessage || '获取兑奖密码失败');
     }
   }, [redeemForm]);
 
@@ -58,7 +58,7 @@ function SystemSettings() {
 
       message.success('兑奖密码已保存');
     } catch (error) {
-      console.error('Error saving password:', error);
+      console.error('Error saving password:');
       message.error(error.message || '保存失败');
     } finally {
       setRedeemLoading(false);
@@ -89,7 +89,7 @@ function SystemSettings() {
         },
       });
     } catch (error) {
-      console.error('Error changing password:', error);
+      console.error('Error changing password:');
       message.error(error.message || '密码修改失败');
     } finally {
       setAdminLoading(false);
@@ -111,7 +111,7 @@ function SystemSettings() {
       redeemForm.setFieldsValue({ redeemPassword: DEFAULT_PASSWORD });
       message.success('兑奖密码已恢复为默认密码');
     } catch (error) {
-      console.error('Error resetting password:', error);
+      console.error('Error resetting password:');
       message.error(error.message || '重置失败');
     } finally {
       setRedeemLoading(false);

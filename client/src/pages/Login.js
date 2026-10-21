@@ -27,7 +27,7 @@ function Login({ onLogin }) {
         message.error(data.message || "登录失败");
       }
     } catch (error) {
-      message.error("服务器错误，请稍后重试");
+      message.error(error.userMessage || "服务器错误，请稍后重试");
     } finally {
       setLoading(false);
     }

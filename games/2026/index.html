@@ -854,6 +854,7 @@
             type: "POST",
             dataType: "json",
             async: true,
+            timeout: 10000,
             data: {
               id: id,
               vipcard: vipcardId,
@@ -907,8 +908,13 @@
                 $(".result-card").toggleClass("show");
               }
             },
-            error: function () {
-              alert("亲系统忙，请返回再试一下~");
+            error: function (xhr, status) {
+              var text = status === "timeout" ? "请求超时，请刷新确认中奖结果后再试" : "系统繁忙，请稍后重试";
+              try {
+                var body = JSON.parse(xhr.responseText);
+                text = body.prizename || body.message || text;
+              } catch (error) {}
+              alert(text);
               loading = false;
             },
           });
@@ -928,6 +934,7 @@
               type: "POST",
               dataType: "json",
               async: true,
+              timeout: 10000,
 
               data: {
                 parssword: parssword,
@@ -935,6 +942,11 @@
                 vipcard: vipcard,
               },
 
+              error: function (xhr, status) {
+                var text = status === "timeout" ? "请求超时，请刷新确认兑奖结果后再试" : "兑奖服务繁忙，请稍后重试";
+                try { var body = JSON.parse(xhr.responseText); text = body.msg || body.message || text; } catch (error) {}
+                alert(text);
+              },
               success: function (res) {
                 alert(res.msg);
                 if (0 == res.error) {

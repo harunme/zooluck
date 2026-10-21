@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Card,
   Button,
@@ -15,6 +15,7 @@ import {
 } from "antd";
 import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
 import { get, post, put, del } from "../utils/api.js";
+import PrizeArtwork from "./PrizeArtwork";
 
 function PrizeSettings() {
   const [prizes, setPrizes] = useState([]);
@@ -23,31 +24,48 @@ function PrizeSettings() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [editingPrize, setEditingPrize] = useState(null);
+  const [stockConflict, setStockConflict] = useState(false);
+  const fetchController = useRef(null);
 
-  // 初始加载奖品数据
-  useEffect(() => {
-    fetchPrizes();
-  }, []);
-
-  const fetchPrizes = async () => {
-    setLoading(true);
+  const fetchPrizes = useCallback(async (silent = false) => {
+    fetchController.current?.abort();
+    const controller = new AbortController();
+    fetchController.current = controller;
+    if (!silent) setLoading(true);
     try {
-      const response = await get("/prizes");
+      const response = await get("/prizes", { signal: controller.signal });
       if (!response.ok) {
         throw new Error("Failed to fetch prizes");
       }
       const data = await response.json();
-      setPrizes(data);
+      if (!controller.signal.aborted) setPrizes(data);
     } catch (error) {
-      console.error("Error fetching prizes:", error);
-      message.error("加载奖品列表失败");
+      if (controller.signal.aborted) return;
+      console.error("Error fetching prizes:");
+      message.error(error.userMessage || "加载奖品列表失败");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchPrizes();
+    return () => fetchController.current?.abort();
+  }, [fetchPrizes]);
+
+  useEffect(() => {
+    if (isModalVisible || loading) return;
+    const timer = setInterval(() => fetchPrizes(true), 15000);
+    return () => clearInterval(timer);
+  }, [fetchPrizes, isModalVisible, loading]);
 
   const handleAdd = () => {
+    fetchController.current?.abort();
+    setLoading(false);
     setEditingId(null);
+    setEditingPrize(null);
+    setStockConflict(false);
     setPreviewImage(null);
     form.resetFields();
     form.setFieldsValue({ supplier: "大连森林动物园" });
@@ -55,7 +73,12 @@ function PrizeSettings() {
   };
 
   const handleEdit = (record) => {
+    fetchController.current?.abort();
+    setLoading(false);
     setEditingId(record.id);
+    setEditingPrize(record);
+    setStockConflict(false);
+    form.resetFields();
     form.setFieldsValue(record);
     setPreviewImage(record.image);
     setIsModalVisible(true);
@@ -67,15 +90,30 @@ function PrizeSettings() {
       setLoading(true);
 
       if (editingId) {
-        // 更新奖品
-        const response = await put(`/prizes/${editingId}`, values);
+        const changes = Object.fromEntries(
+          Object.entries(values).filter(([key, value]) => value !== editingPrize[key])
+        );
+        if (Object.keys(changes).length === 0) {
+          setIsModalVisible(false);
+          return;
+        }
+        if (changes.quantity !== undefined) {
+          changes.expectedQuantity = editingPrize.quantity;
+        }
+        const response = await put(`/prizes/${editingId}`, changes);
+
+        if (response.status === 409) {
+          setStockConflict(true);
+          message.warning("库存已变化，输入已保留，请刷新核对库存后重试");
+          return;
+        }
 
         if (!response.ok) {
           throw new Error("Failed to update prize");
         }
 
         const updatedPrize = await response.json();
-        setPrizes(prizes.map((p) => (p.id === editingId ? updatedPrize : p)));
+        setPrizes(current => current.map((p) => (p.id === editingId ? updatedPrize : p)));
         message.success("编辑奖品成功");
       } else {
         // 添加新奖品
@@ -86,21 +124,45 @@ function PrizeSettings() {
         }
 
         const newPrize = await response.json();
-        setPrizes([...prizes, newPrize]);
+        setPrizes(current => [...current, newPrize]);
         message.success("添加奖品成功");
       }
 
       setIsModalVisible(false);
       setPreviewImage(null);
     } catch (error) {
-      console.error("Error saving prize:", error);
-      message.error(editingId ? "编辑奖品失败" : "添加奖品失败");
+      console.error("Error saving prize:");
+      message.error(error.userMessage || (editingId ? "编辑奖品失败" : "添加奖品失败"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh the comparison baseline without discarding the operator's input.
+  const refreshEditingStock = async () => {
+    setLoading(true);
+    try {
+      const response = await get("/prizes");
+      if (!response.ok) throw new Error("Failed to refresh stock");
+      const data = await response.json();
+      const latest = data.find(prize => prize.id === editingId);
+      setPrizes(data);
+      if (!latest) {
+        message.warning("奖品已删除，请关闭编辑窗口");
+        return;
+      }
+      setEditingPrize(current => ({ ...current, quantity: latest.quantity }));
+      setStockConflict(false);
+      message.info(`当前剩余可抽数量为 ${latest.quantity}，请核对输入后再保存`);
+    } catch (error) {
+      message.error(error.userMessage || "刷新库存失败，请重试");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
+    fetchController.current?.abort();
     try {
       setLoading(true);
       const response = await del(`/prizes/${id}`);
@@ -109,11 +171,11 @@ function PrizeSettings() {
         throw new Error("Failed to delete prize");
       }
 
-      setPrizes(prizes.filter((p) => p.id !== id));
+      setPrizes(current => current.filter((p) => p.id !== id));
       message.success("删除成功");
     } catch (error) {
-      console.error("Error deleting prize:", error);
-      message.error("删除奖品失败");
+      console.error("Error deleting prize:");
+      message.error(error.userMessage || "删除奖品失败");
     } finally {
       setLoading(false);
     }
@@ -135,12 +197,6 @@ function PrizeSettings() {
     reader.readAsDataURL(file);
   };
 
-  // 检查是否是 base64 图片
-  const isBase64Image = (str) => {
-    if (!str) return false;
-    return str.startsWith("data:image");
-  };
-
   const totalQuantity = prizes.reduce(
     (sum, prize) => sum + (prize.quantity || 0),
     0
@@ -153,41 +209,7 @@ function PrizeSettings() {
       key: "image",
       width: 100,
       align: "center",
-      render: (image) => {
-        if (!image) {
-          return (
-            <span
-              style={{
-                color: "#ccc",
-                lineHeight: "42px",
-                display: "block",
-                height: "42px",
-              }}
-            ></span>
-          );
-        }
-        if (isBase64Image(image)) {
-          return (
-            <img
-              src={image}
-              alt="prize"
-              style={{
-                maxWidth: "42px",
-                maxHeight: "42px",
-                borderRadius: "4px",
-                display: "block",
-                margin: "0 auto",
-              }}
-            />
-          );
-        }
-        // 显示 emoji
-        return (
-          <div style={{ fontSize: 32, lineHeight: "60px", height: "60px" }}>
-            {image}
-          </div>
-        );
-      },
+      render: image => <PrizeArtwork source={image} />,
     },
     {
       title: "奖品名称",
@@ -197,7 +219,7 @@ function PrizeSettings() {
     },
 
     {
-      title: "奖品数量",
+      title: "剩余可抽数量",
       dataIndex: "quantity",
       key: "quantity",
       width: 120,
@@ -257,16 +279,20 @@ function PrizeSettings() {
       <Card
         title="奖品设置"
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAdd}
-            loading={loading}
-          >
-            添加奖品
-          </Button>
+          <Space>
+            <Button onClick={() => fetchPrizes()} disabled={loading}>刷新</Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+              loading={loading}
+            >
+              添加奖品
+            </Button>
+          </Space>
         }
       >
+        <p>中奖成功即扣减可抽数量，核销不重复扣减；列表每 15 秒自动刷新。</p>
         <Spin spinning={loading}>
           <Table
             columns={columns}
@@ -292,6 +318,12 @@ function PrizeSettings() {
           confirmLoading={loading}
         >
           <Form form={form} layout="vertical">
+            {stockConflict && (
+              <p role="alert">
+                库存已变化，输入已保留。
+                <Button onClick={refreshEditingStock} loading={loading}>刷新核对库存</Button>
+              </p>
+            )}
             <Form.Item
               name="name"
               label="奖品名称"
@@ -304,41 +336,11 @@ function PrizeSettings() {
               <div>
                 {previewImage && (
                   <div style={{ marginBottom: "12px" }}>
-                    {isBase64Image(previewImage) ? (
-                      <img
-                        src={previewImage}
-                        alt="preview"
-                        onClick={() => {
-                          document.getElementById("image-upload-input").click();
-                        }}
-                        style={{
-                          maxWidth: "120px",
-                          maxHeight: "120px",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          border: "1px solid #d9d9d9",
-                          padding: "4px",
-                        }}
-                        title="点击更换图片"
-                      />
-                    ) : (
-                      <div
-                        onClick={() => {
-                          document.getElementById("image-upload-input").click();
-                        }}
-                        style={{
-                          fontSize: 60,
-                          cursor: "pointer",
-                          display: "inline-block",
-                          padding: "8px",
-                          border: "1px solid #d9d9d9",
-                          borderRadius: "4px",
-                        }}
-                        title="点击更换图片"
-                      >
-                        {previewImage}
-                      </div>
-                    )}
+                    <PrizeArtwork
+                      source={previewImage}
+                      size={120}
+                      onClick={() => document.getElementById("image-upload-input").click()}
+                    />
                     <p
                       style={{
                         fontSize: "12px",
@@ -379,13 +381,19 @@ function PrizeSettings() {
 
             <Form.Item
               name="quantity"
-              label="奖品数量"
-              rules={[{ required: true, message: "请输入奖品数量" }]}
+              label="剩余可抽数量"
+              extra="中奖即扣减；人工修改会直接设置可抽数量。历史未领取奖品请另行预留。"
+              rules={[
+                { required: true, message: "请输入剩余可抽数量" },
+                { type: "integer", min: 0, max: Number.MAX_SAFE_INTEGER, message: "请输入非负安全整数" },
+              ]}
             >
               <InputNumber
                 min={0}
+                max={Number.MAX_SAFE_INTEGER}
+                precision={0}
                 style={{ width: "100%" }}
-                placeholder="请输入奖品数量"
+                placeholder="请输入剩余可抽数量"
               />
             </Form.Item>
 

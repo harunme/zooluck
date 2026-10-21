@@ -1,43 +1,39 @@
 #!/bin/sh
-set -e
-
-echo "🚀 Starting ZooLuck Application..."
-
-# 检查数据目录
-if [ ! -d "/app/server/data" ]; then
-    echo "📁 Creating data directory..."
-    mkdir -p /app/server/data
-fi
-
-# 启动 Nginx（后台）
-echo "🌐 Starting Nginx..."
-nginx -g "daemon off;" &
+set -eu
+mkdir -p /app/server/data
+nginx -g 'daemon off;' &
 NGINX_PID=$!
-
-# 启动后端服务（后台）
-echo "🔧 Starting Backend Server..."
 cd /app/server
-npm start &
+node src/index.js &
 BACKEND_PID=$!
-
-# 等待服务启动
-echo "⏳ Waiting for services to start..."
-sleep 5
-
-# 健康检查
-for i in {1..10}; do
-    if wget --quiet --tries=1 --spider http://localhost/health; then
-        echo "✅ Services are healthy!"
+terminate() {
+    exit_code=${1:-0}
+    trap - TERM INT
+    kill -TERM "$BACKEND_PID" "$NGINX_PID" 2>/dev/null || true
+    wait "$BACKEND_PID" 2>/dev/null || true
+    wait "$NGINX_PID" 2>/dev/null || true
+    exit "$exit_code"
+}
+trap 'terminate 0' TERM INT
+attempt=0
+healthy=false
+while [ "$attempt" -lt 30 ]; do
+    if ! kill -0 "$BACKEND_PID" 2>/dev/null || ! kill -0 "$NGINX_PID" 2>/dev/null; then
+        terminate 1
+    fi
+    if wget -q -T 2 --spider http://127.0.0.1/health; then
+        healthy=true
         break
     fi
-    echo "⏳ Waiting... ($i/10)"
-    sleep 3
+    attempt=$((attempt + 1))
+    sleep 1
 done
-
-# 保持容器运行
-echo "🎉 Application is running!"
-echo "   Frontend (HTTPS): https://localhost"
-echo "   Backend API: https://localhost/api"
-
-# 等待任一进程退出
-wait $NGINX_PID $BACKEND_PID
+if [ "$healthy" != true ]; then
+    echo 'Backend readiness check failed' >&2
+    terminate 1
+fi
+echo 'ZooLuck is ready'
+while kill -0 "$BACKEND_PID" 2>/dev/null && kill -0 "$NGINX_PID" 2>/dev/null; do
+    sleep 1
+done
+terminate 1

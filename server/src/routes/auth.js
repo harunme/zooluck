@@ -1,176 +1,79 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { getDB } from '../db.js';
+import { withRead, withWrite } from '../db.js';
+import { hashPassword, comparePassword } from '../passwords.js';
+import { sendError, ServiceError } from '../errors.js';
+import { TokenBucket } from '../rate-limit.js';
+import { config } from '../config.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'zooluck-secret-key-2026';
+const adminLimits = new TokenBucket(config.adminRate, config.adminBurst);
+export const resetAdminLimits = () => adminLimits.clear();
 
-// 中间件：验证token
 export const authenticateToken = (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({ success: false, message: '未授权访问' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    if (!token) return res.status(401).json({ success: false, message: '未授权访问', code: 'UNAUTHORIZED' });
+    req.user = jwt.verify(token, JWT_SECRET);
     next();
-  } catch (error) {
-    res.status(401).json({ success: false, message: 'token无效或已过期' });
+  } catch {
+    res.status(401).json({ success: false, message: 'token无效或已过期', code: 'UNAUTHORIZED' });
   }
 };
+const adminLimit = (req, res, next) => {
+  try { adminLimits.check(String(req.user.id)); next(); }
+  catch (error) { sendError(res, error); }
+};
+const validCredentials = (username, password) => typeof username === 'string' && username.length > 0 && typeof password === 'string' && password.length > 0;
 
-// 登录
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
+    if (!validCredentials(username, password)) throw new ServiceError('INVALID_INPUT', '用户名和密码不能为空', 400);
+    const admin = await withRead(db => db.get('SELECT id, username, password FROM admins WHERE username = ?', username));
+    if (!admin || !await comparePassword(password, admin.password)) {
+      return res.status(401).json({ success: false, message: '用户名或密码错误', code: 'INVALID_CREDENTIALS' });
     }
-
-    const db = getDB();
-
-    // 查询管理员
-    const admin = await db.get(
-      'SELECT * FROM admins WHERE username = ?',
-      [username]
-    );
-
-    if (!admin) {
-      return res.status(401).json({ success: false, message: '用户名或密码错误' });
-    }
-
-    // 验证密码
-    const isValidPassword = await bcrypt.compare(password, admin.password);
-
-    if (!isValidPassword) {
-      return res.status(401).json({ success: false, message: '用户名或密码错误' });
-    }
-
-    // 生成JWT token
-    const token = jwt.sign(
-      { id: admin.id, username: admin.username },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      success: true,
-      message: '登录成功',
-      data: {
-        username: admin.username,
-        token
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: '服务器错误' });
-  }
+    const token = jwt.sign({ id: admin.id, username: admin.username }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ success: true, message: '登录成功', data: { username: admin.username, token } });
+  } catch (error) { sendError(res, error); }
 });
 
-// 验证token
-router.get('/verify', (req, res) => {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+router.get('/verify', authenticateToken, (req, res) => res.json({ success: true, data: req.user }));
 
-    if (!token) {
-      return res.status(401).json({ success: false, message: '未提供token' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    res.json({ success: true, data: decoded });
-  } catch (error) {
-    res.status(401).json({ success: false, message: 'token无效或已过期' });
-  }
-});
-
-// 创建管理员（仅用于初始化）
-router.post('/create', async (req, res) => {
+// Initial deployment still creates the first account; further creation requires login.
+router.post('/create', authenticateToken, adminLimit, async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
-    }
-
-    const db = getDB();
-
-    // 检查是否已存在
-    const existing = await db.get(
-      'SELECT * FROM admins WHERE username = ?',
-      [username]
-    );
-
-    if (existing) {
-      return res.status(400).json({ success: false, message: '用户名已存在' });
-    }
-
-    // 加密密码
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 插入管理员
-    await db.run(
-      'INSERT INTO admins (username, password) VALUES (?, ?)',
-      [username, hashedPassword]
-    );
-
+    if (!validCredentials(username, password)) throw new ServiceError('INVALID_INPUT', '用户名和密码不能为空', 400);
+    const exists = await withRead(db => db.get('SELECT id FROM admins WHERE username = ?', username));
+    if (exists) throw new ServiceError('ADMIN_EXISTS', '用户名已存在', 400);
+    const hash = await hashPassword(password);
+    await withWrite(async db => {
+      if (await db.get('SELECT id FROM admins WHERE username = ?', username)) throw new ServiceError('ADMIN_EXISTS', '用户名已存在', 400);
+      await db.run('INSERT INTO admins (username, password) VALUES (?, ?)', [username, hash]);
+    });
     res.json({ success: true, message: '管理员创建成功' });
-  } catch (error) {
-    console.error('Create admin error:', error);
-    res.status(500).json({ success: false, message: '服务器错误' });
-  }
+  } catch (error) { sendError(res, error); }
 });
 
-// 修改密码
-router.post('/change-password', authenticateToken, async (req, res) => {
+router.post('/change-password', authenticateToken, adminLimit, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: '当前密码和新密码不能为空' });
+    if (typeof currentPassword !== 'string' || !currentPassword || typeof newPassword !== 'string' || newPassword.length < 4) {
+      throw new ServiceError('INVALID_INPUT', '请填写当前密码，新密码不能少于4位', 400);
     }
-
-    if (newPassword.length < 4) {
-      return res.status(400).json({ message: '新密码长度不能少于4位' });
-    }
-
-    const db = getDB();
-
-    // 查询用户
-    const admin = await db.get(
-      'SELECT * FROM admins WHERE username = ?',
-      [req.user.username]
-    );
-
-    if (!admin) {
-      return res.status(404).json({ message: '用户不存在' });
-    }
-
-    // 验证当前密码
-    const isValidPassword = await bcrypt.compare(currentPassword, admin.password);
-
-    if (!isValidPassword) {
-      return res.status(401).json({ message: '当前密码错误' });
-    }
-
-    // 加密新密码
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    // 更新密码
-    await db.run(
-      'UPDATE admins SET password = ? WHERE id = ?',
-      [hashedNewPassword, admin.id]
-    );
-
+    const admin = await withRead(db => db.get('SELECT id, password FROM admins WHERE id = ?', req.user.id));
+    if (!admin) throw new ServiceError('ADMIN_NOT_FOUND', '用户不存在', 404);
+    if (!await comparePassword(currentPassword, admin.password)) throw new ServiceError('INVALID_PASSWORD', '当前密码错误', 400);
+    const hash = await hashPassword(newPassword);
+    await withWrite(async db => {
+      const result = await db.run('UPDATE admins SET password = ? WHERE id = ? AND password = ?', [hash, admin.id, admin.password]);
+      if (result.changes !== 1) throw new ServiceError('PASSWORD_CHANGED', '密码已变化，请重新登录后重试', 409);
+    });
     res.json({ message: '密码修改成功' });
-  } catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({ message: '服务器错误' });
-  }
+  } catch (error) { sendError(res, error); }
 });
 
 export default router;

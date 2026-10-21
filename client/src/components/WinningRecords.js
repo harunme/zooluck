@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Card,
   Table,
@@ -11,95 +11,68 @@ import {
   Form,
   Radio,
   message,
-  Spin,
 } from "antd";
 import { SearchOutlined, DeleteOutlined } from "@ant-design/icons";
 import { get, put, del } from "../utils/api.js";
+import PrizeArtwork from "./PrizeArtwork";
+import { formatBeijingTime } from "../utils/dates.js";
 
 function WinningRecords() {
-  const [records, setRecords] = useState([]);
+  const [result, setResult] = useState({ items: [], total: 0, page: 1, years: [] });
   const [loading, setLoading] = useState(false);
-
+  const [loadFailed, setLoadFailed] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYear, setSelectedYear] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [query, setQuery] = useState({ page: 1, keyword: "", year: "all" });
+  const [reload, setReload] = useState(0);
+  const requestSequence = useRef(0);
+  const fetchController = useRef(null);
   const pageSize = 10;
-
+  const currentPage = result.page;
   const [form] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
 
-  // 获取中奖记录
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
+    fetchController.current?.abort();
+    const controller = new AbortController();
+    fetchController.current = controller;
+    const sequence = ++requestSequence.current;
     setLoading(true);
+    setLoadFailed(false);
     try {
-      const response = await get("/records");
+      const parameters = new URLSearchParams({ page: String(query.page), pageSize: String(pageSize) });
+      if (query.keyword) parameters.set("keyword", query.keyword);
+      if (query.year !== "all") parameters.set("year", query.year);
+      const response = await get(`/records?${parameters}`, { signal: controller.signal });
+      if (!response.ok) throw new Error("Failed to fetch records");
       const data = await response.json();
-      const formattedRecords = data.map((record) => ({
-        ...record,
-        key: record.id,
-      }));
-      setRecords(formattedRecords);
+      if (!Array.isArray(data.items) || !Array.isArray(data.years) || !Number.isSafeInteger(data.total) || data.total < 0 || !Number.isSafeInteger(data.page) || data.page < 1) {
+        throw new Error("Invalid records response");
+      }
+      if (!controller.signal.aborted && sequence === requestSequence.current) {
+        setResult(data);
+        if (data.page !== query.page) {
+          setQuery(current => current === query ? { ...current, page: data.page } : current);
+        }
+      }
     } catch (error) {
-      console.error("Failed to fetch records:", error);
-      message.error("获取中奖记录失败");
+      if (controller.signal.aborted || sequence !== requestSequence.current) return;
+      setLoadFailed(true);
+      message.error(error.userMessage || "获取中奖记录失败，请重试");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && sequence === requestSequence.current) setLoading(false);
     }
-  };
+  }, [query]);
 
-  // 组件挂载时获取数据
   useEffect(() => {
     fetchRecords();
-  }, []);
+    return () => {
+      fetchController.current?.abort();
+      requestSequence.current += 1;
+    };
+  }, [fetchRecords, reload]);
 
-  const years = useMemo(() => {
-    const yearSet = new Set();
-    records.forEach((r) => {
-      if (r.created_at) {
-        const date = new Date(r.created_at);
-        // 转换为北京时间
-        const beijingTime = new Date(date.getTime() + 8 * 3600000);
-        const year = beijingTime.getFullYear().toString();
-        yearSet.add(year);
-      }
-    });
-    return Array.from(yearSet).sort().reverse();
-  }, [records]);
-
-  const filteredRecords = useMemo(() => {
-    let filtered = records;
-
-    if (selectedYear !== "all") {
-      filtered = filtered.filter((r) => {
-        if (r.created_at) {
-          const date = new Date(r.created_at);
-          // 转换为北京时间
-          const beijingTime = new Date(date.getTime() + 8 * 3600000);
-          const year = beijingTime.getFullYear().toString();
-          return year === selectedYear;
-        }
-        return false;
-      });
-    }
-
-    if (searchTerm) {
-      filtered = filtered.filter((r) => {
-        const prizeNameMatch =
-          r.prize_name &&
-          r.prize_name.toLowerCase().includes(searchTerm.toLowerCase());
-        return prizeNameMatch;
-      });
-    }
-
-    return filtered;
-  }, [records, searchTerm, selectedYear]);
-
-  const paginatedRecords = filteredRecords.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const submitSearch = () => setQuery(current => ({ ...current, keyword: searchTerm.trim(), page: 1 }));
 
   const handleEdit = (record) => {
     setEditingRecord(record);
@@ -125,22 +98,12 @@ function WinningRecords() {
         throw new Error("Failed to save record");
       }
 
-      setRecords(
-        records.map((r) =>
-          r.id === editingRecord.id
-            ? {
-                ...r,
-                quantity: parseInt(values.quantity),
-                status: parseInt(values.status),
-              }
-            : r
-        )
-      );
+      setReload(value => value + 1);
       setIsModalVisible(false);
       message.success("保存成功");
     } catch (error) {
-      console.error("Failed to save record:", error);
-      message.error("保存失败");
+      console.error("Failed to save record:");
+      message.error(error.userMessage || "保存失败");
     }
   };
 
@@ -156,20 +119,14 @@ function WinningRecords() {
           if (!response.ok) {
             throw new Error("Failed to delete record");
           }
-          setRecords(records.filter((r) => r.id !== id));
+          setReload(value => value + 1);
           message.success("删除成功");
         } catch (error) {
-          console.error("Failed to delete record:", error);
-          message.error("删除失败");
+          console.error("Failed to delete record:");
+          message.error(error.userMessage || "删除失败");
         }
       },
     });
-  };
-
-  // 检查是否是 base64 图片
-  const isBase64Image = (str) => {
-    if (!str) return false;
-    return str.startsWith("data:image");
   };
 
   const columns = [
@@ -202,41 +159,7 @@ function WinningRecords() {
       key: "prize_image",
       width: 100,
       align: "center",
-      render: (image) => {
-        if (!image) {
-          return (
-            <span
-              style={{
-                color: "#ccc",
-                lineHeight: "42px",
-                display: "block",
-                height: "42px",
-              }}
-            ></span>
-          );
-        }
-        if (isBase64Image(image)) {
-          return (
-            <img
-              src={image}
-              alt="prize"
-              style={{
-                maxWidth: "42px",
-                maxHeight: "42px",
-                borderRadius: "4px",
-                display: "block",
-                margin: "0 auto",
-              }}
-            />
-          );
-        }
-        // 显示 emoji
-        return (
-          <div style={{ fontSize: 32, lineHeight: "60px", height: "60px" }}>
-            {image}
-          </div>
-        );
-      },
+      render: image => <PrizeArtwork source={image} />,
     },
     {
       title: "奖品名称",
@@ -278,21 +201,7 @@ function WinningRecords() {
       dataIndex: "created_at",
       key: "created_at",
       width: 180,
-      render: (text) => {
-        if (!text) return "-";
-        const date = new Date(text);
-        // 数据库存的是UTC时间，转换为北京时间（+8小时）
-        const beijingTime = new Date(date.getTime() + 8 * 3600000);
-        return beijingTime.toLocaleString("zh-CN", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false
-        });
-      },
+      render: formatBeijingTime,
     },
     {
       title: "操作",
@@ -320,7 +229,7 @@ function WinningRecords() {
 
   const yearOptions = [
     { label: "全部年份", value: "all" },
-    ...years.map((year) => ({ label: `${year}年中奖记录`, value: year })),
+    ...result.years.map((year) => ({ label: `${year}年中奖记录`, value: year })),
   ];
 
   return (
@@ -331,34 +240,32 @@ function WinningRecords() {
               placeholder="输入奖品名称搜索"
               prefix={<SearchOutlined />}
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={event => setSearchTerm(event.target.value)}
+              onPressEnter={submitSearch}
+              maxLength={100}
               style={{ width: 250 }}
             />
             <Select
-              value={selectedYear}
+              value={query.year}
               onChange={(value) => {
-                setSelectedYear(value);
-                setCurrentPage(1);
+                setQuery(current => ({ ...current, year: value, page: 1 }));
               }}
               options={yearOptions}
               style={{ width: 150 }}
             />
             <Button
               type="primary"
-              onClick={() => {
-                setCurrentPage(1);
-              }}
+              onClick={submitSearch}
             >
               搜索
             </Button>
+            <Button onClick={() => setReload(value => value + 1)} loading={loading}>刷新</Button>
           </Space>
 
+          {loadFailed && <p role="alert">加载失败，已保留原有记录。<Button onClick={() => setReload(value => value + 1)}>重试</Button></p>}
           <Table
             columns={columns}
-            dataSource={paginatedRecords}
+            dataSource={result.items}
             rowKey="id"
             pagination={false}
             scroll={{ x: 1200 }}
@@ -374,14 +281,14 @@ function WinningRecords() {
             }}
           >
             <span>
-              共 <strong>{filteredRecords.length}</strong> 条记录，第{" "}
+              共 <strong>{result.total}</strong> 条记录，第{" "}
               <strong>{currentPage}</strong> 页
             </span>
             <Pagination
               current={currentPage}
               pageSize={pageSize}
-              total={filteredRecords.length}
-              onChange={setCurrentPage}
+              total={result.total}
+              onChange={page => setQuery(current => ({ ...current, page }))}
               showSizeChanger={false}
             />
           </div>

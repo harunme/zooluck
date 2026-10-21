@@ -1,121 +1,89 @@
 import express from 'express';
-import { getDB } from '../db.js';
+import { withRead, withWrite } from '../db.js';
 import { authenticateToken } from './auth.js';
+import { decodePrizeImage, serializePrize, validImageInput, prizeProjection } from '../prize-images.js';
+import { cachedImage } from '../image-cache.js';
+import { sendError, ServiceError } from '../errors.js';
 
 const router = express.Router();
+const isQuantity = value => Number.isSafeInteger(value) && value >= 0;
+const invalid = message => new ServiceError('INVALID_INPUT', message, 400);
+const validText = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 200;
 
-// Get all prizes (需要认证)
-router.get('/', authenticateToken, async (_, res) => {
+router.get('/:id/image/:hash', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
-    const db = getDB();
-    const prizes = await db.all('SELECT * FROM prizes ORDER BY id');
-    res.json(prizes);
+    if (!/^[1-9]\d*$/.test(req.params.id) || !/^[a-f0-9]{64}$/.test(req.params.hash)) return res.status(404).end();
+    const prize = await withRead(db => db.get('SELECT image_hash, image_mime FROM prizes WHERE id = ?', req.params.id));
+    if (!prize?.image_hash || prize.image_hash !== req.params.hash) return res.status(404).end();
+    const etag = `"${prize.image_hash}"`;
+    res.set({ 'Cache-Control': 'public, max-age=31536000, immutable', ETag: etag, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox" });
+    const validators = (req.headers['if-none-match'] || '').split(',').map(value => value.trim().replace(/^W\//, ''));
+    if (validators.includes(etag) || validators.includes('*')) return res.status(304).end();
+    const image = await cachedImage(prize.image_hash);
+    res.type(image.type).send(image.bytes);
   } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.set('Cache-Control', 'no-store');
+    if (error.status === 404) return res.status(404).end();
+    sendError(res, error);
   }
 });
 
-// Create prize (需要认证)
+router.get('/', authenticateToken, async (_, res) => {
+  try { res.json((await withRead(db => db.all(`SELECT ${prizeProjection()} FROM prizes ORDER BY id`))).map(serializePrize)); }
+  catch (error) { sendError(res, error); }
+});
+
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, image, quantity, supplier } = req.body;
-
-    if (!name || !quantity || !supplier) {
-      return res.status(400).json({ message: 'Missing required fields: name, quantity, supplier' });
-    }
-
-    const db = getDB();
-    const result = await db.run(
-      'INSERT INTO prizes (name, image, quantity, supplier) VALUES (?, ?, ?, ?)',
-      [name, image || null, parseInt(quantity), supplier]
-    );
-
-    res.status(201).json({
-      id: result.lastID,
-      name,
-      image: image || null,
-      quantity: parseInt(quantity),
-      supplier
-    });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
+    if (!validText(name) || !validText(supplier)) throw invalid('奖品名称和提供商须为 1–200 字符');
+    if (!isQuantity(quantity)) throw invalid('剩余可抽数量必须为非负安全整数');
+    if (!validImageInput(image)) throw invalid('图片须为不超过 5 MiB 的有效 Base64 图片或表情，不能提交图片地址');
+    const decoded = decodePrizeImage(image);
+    const prize = await withWrite(async db => {
+      const result = await db.run('INSERT INTO prizes (name, image, quantity, supplier, image_hash, image_mime) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, image || null, quantity, supplier, decoded?.hash || null, decoded?.type || null]);
+      return db.get(`SELECT ${prizeProjection()} FROM prizes WHERE id = ?`, result.lastID);
+    }, { images: true });
+    res.status(201).json(serializePrize(prize));
+  } catch (error) { sendError(res, error); }
 });
 
-// Update prize (需要认证)
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const prizeId = parseInt(req.params.id);
-    const { name, image, quantity, supplier } = req.body;
-
-    const db = getDB();
-
-    // Check if prize exists
-    const prize = await db.get('SELECT * FROM prizes WHERE id = ?', [prizeId]);
-    if (!prize) {
-      return res.status(404).json({ message: 'Prize not found' });
+    const { name, image, quantity, supplier, expectedQuantity } = req.body;
+    if ((name !== undefined && !validText(name)) || (supplier !== undefined && !validText(supplier))) throw invalid('奖品名称和提供商须为 1–200 字符');
+    if (quantity !== undefined && (!isQuantity(quantity) || !isQuantity(expectedQuantity))) throw invalid('修改库存须提供有效的 quantity 和 expectedQuantity（非负安全整数）');
+    if (!validImageInput(image)) throw invalid('图片须为不超过 5 MiB 的有效 Base64 图片或表情，不能提交图片地址');
+    const decoded = image === undefined ? undefined : decodePrizeImage(image);
+    const fields = [], values = [];
+    for (const [key, value] of Object.entries({ name, image, quantity, supplier })) {
+      if (value !== undefined) { fields.push(`${key} = ?`); values.push(value); }
     }
-
-    // Update prize
-    const updateFields = [];
-    const updateValues = [];
-
-    if (name !== undefined) {
-      updateFields.push('name = ?');
-      updateValues.push(name);
-    }
-    if (image !== undefined) {
-      updateFields.push('image = ?');
-      updateValues.push(image);
-    }
-    if (quantity !== undefined) {
-      updateFields.push('quantity = ?');
-      updateValues.push(parseInt(quantity));
-    }
-    if (supplier !== undefined) {
-      updateFields.push('supplier = ?');
-      updateValues.push(supplier);
-    }
-
-    if (updateFields.length === 0) {
-      return res.status(400).json({ message: 'No fields to update' });
-    }
-
-    updateValues.push(prizeId);
-    const query = `UPDATE prizes SET ${updateFields.join(', ')} WHERE id = ?`;
-    await db.run(query, updateValues);
-
-    // Fetch updated prize
-    const updatedPrize = await db.get('SELECT * FROM prizes WHERE id = ?', [prizeId]);
-
-    res.json(updatedPrize);
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
+    if (!fields.length) throw invalid('No fields to update');
+    if (image !== undefined) { fields.push('image_hash = ?', 'image_mime = ?'); values.push(decoded?.hash || null, decoded?.type || null); }
+    const prize = await withWrite(async db => {
+      if (!await db.get('SELECT id FROM prizes WHERE id = ?', req.params.id)) throw new ServiceError('PRIZE_NOT_FOUND', 'Prize not found', 404);
+      const parameters = [...values, req.params.id];
+      if (quantity !== undefined) parameters.push(expectedQuantity);
+      const updated = await db.run(`UPDATE prizes SET ${fields.join(', ')} WHERE id = ?${quantity !== undefined ? ' AND quantity = ?' : ''}`, parameters);
+      if (updated.changes !== 1) throw new ServiceError('STOCK_CONFLICT', '奖品或库存已变化，请刷新核对后重试', 409);
+      return db.get(`SELECT ${prizeProjection()} FROM prizes WHERE id = ?`, req.params.id);
+    }, { images: image !== undefined });
+    res.json(serializePrize(prize));
+  } catch (error) { sendError(res, error); }
 });
 
-// Delete prize (需要认证)
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const prizeId = parseInt(req.params.id);
-    const db = getDB();
-
-    // Check if prize exists
-    const prize = await db.get('SELECT * FROM prizes WHERE id = ?', [prizeId]);
-    if (!prize) {
-      return res.status(404).json({ message: 'Prize not found' });
-    }
-
-    await db.run('DELETE FROM prizes WHERE id = ?', [prizeId]);
-
-    res.json(prize);
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
+    const prize = await withWrite(async db => {
+      const row = await db.get(`SELECT ${prizeProjection()} FROM prizes WHERE id = ?`, req.params.id);
+      if (!row) throw new ServiceError('PRIZE_NOT_FOUND', 'Prize not found', 404);
+      await db.run('DELETE FROM prizes WHERE id = ?', req.params.id);
+      return row;
+    }, { images: true, records: true });
+    res.json(serializePrize(prize));
+  } catch (error) { sendError(res, error); }
 });
-
 export default router;

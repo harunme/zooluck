@@ -38,24 +38,39 @@ export const getAuthHeaders = () => {
  * @returns {Promise<Response>}
  */
 export const apiRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const config = {
-    ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
-  };
-
-  const response = await fetch(url, config);
-
-  // 检查是否为 401 错误（token 无效或过期）
-  if (response.status === 401) {
-    clearAuthAndRedirect();
-    throw new Error('登录已过期，请重新登录');
+  const { timeoutMs = 10000, signal, ...requestOptions } = options;
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", cancel, { once: true });
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+  const friendly = text => Object.assign(new Error(text), { userMessage: text });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...requestOptions, signal: controller.signal,
+      headers: { ...getAuthHeaders(), ...requestOptions.headers },
+    });
+    // Keep the deadline active until the full JSON response has arrived.
+    await response.clone().arrayBuffer();
+    if (response.status === 401 && endpoint !== "/auth/login") {
+      clearAuthAndRedirect();
+      throw friendly("登录已过期，请重新登录");
+    }
+    if ([413, 429, 503].includes(response.status)) {
+      const body = await response.clone().json().catch(() => ({}));
+      throw friendly(body.message || body.prizename || body.msg || "服务繁忙，请稍后重试");
+    }
+    return response;
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    if (timedOut) throw friendly("请求超时，请刷新确认操作结果后再试");
+    if (error.userMessage) throw error;
+    throw friendly("网络请求失败，请稍后重试");
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", cancel);
   }
-
-  return response;
 };
 
 /**
@@ -70,6 +85,7 @@ export const get = (endpoint, options = {}) => {
  */
 export const post = (endpoint, data, options = {}) => {
   return apiRequest(endpoint, {
+    timeoutMs: typeof data?.image === 'string' && data.image.startsWith('data:') ? 15000 : 10000,
     ...options,
     method: 'POST',
     body: JSON.stringify(data),
@@ -81,6 +97,7 @@ export const post = (endpoint, data, options = {}) => {
  */
 export const put = (endpoint, data, options = {}) => {
   return apiRequest(endpoint, {
+    timeoutMs: typeof data?.image === 'string' && data.image.startsWith('data:') ? 15000 : 10000,
     ...options,
     method: 'PUT',
     body: JSON.stringify(data),
